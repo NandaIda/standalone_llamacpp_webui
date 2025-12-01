@@ -39,7 +39,7 @@
 				bind:ref={searchInput}
 				bind:value={searchQuery}
 				onkeydown={(e) => e.key === 'Escape' && handleSearchModeDeactivate()}
-				placeholder="Search conversations..."
+				placeholder="Search titles and messages..."
 				class="pl-8"
 			/>
 

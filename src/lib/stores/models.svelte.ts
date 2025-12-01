@@ -89,6 +89,9 @@ class ModelsStore {
 				} satisfies ModelOption;
 			});
 
+			// Sort models alphabetically by name
+			models.sort((a, b) => a.name.localeCompare(b.name));
+
 			this._models = models;
 
 			const selection = this.determineInitialSelection(models);

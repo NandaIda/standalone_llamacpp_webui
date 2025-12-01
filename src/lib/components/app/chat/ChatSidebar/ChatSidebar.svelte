@@ -32,15 +32,66 @@
 	let isGeneratingTitle = $state(false);
 	let isSelectionMode = $state(false);
 	let selectedConversationIds = $state<Set<string>>(new Set());
+	let conversationMessagesCache = $state<Map<string, DatabaseMessage[]>>(new Map());
+	let isLoadingMessages = $state(false);
+
+	// Load messages for all conversations when search mode is activated
+	async function loadAllConversationMessages() {
+		if (isLoadingMessages || conversationMessagesCache.size > 0) return;
+
+		isLoadingMessages = true;
+		const allConversations = conversations();
+
+		for (const conv of allConversations) {
+			try {
+				const messages = await DatabaseStore.getConversationMessages(conv.id);
+				conversationMessagesCache.set(conv.id, messages);
+			} catch (error) {
+				console.error(`Failed to load messages for conversation ${conv.id}:`, error);
+			}
+		}
+
+		isLoadingMessages = false;
+	}
+
+	// Search in both conversation title and message content
+	function matchesSearch(conversation: DatabaseConversation, query: string): boolean {
+		const lowerQuery = query.toLowerCase();
+
+		// Search in conversation name
+		if (conversation.name.toLowerCase().includes(lowerQuery)) {
+			return true;
+		}
+
+		// Search in message content
+		const messages = conversationMessagesCache.get(conversation.id);
+		if (messages) {
+			return messages.some((msg) =>
+				msg.content && msg.content.toLowerCase().includes(lowerQuery)
+			);
+		}
+
+		return false;
+	}
 
 	let filteredConversations = $derived.by(() => {
 		if (searchQuery.trim().length > 0) {
-			return conversations().filter((conversation: { name: string }) =>
-				conversation.name.toLowerCase().includes(searchQuery.toLowerCase())
+			return conversations().filter((conversation) =>
+				matchesSearch(conversation, searchQuery)
 			);
 		}
 
 		return conversations();
+	});
+
+	// Load messages when search mode is activated
+	$effect(() => {
+		if (isSearchModeActive && searchQuery.trim().length > 0) {
+			loadAllConversationMessages();
+		} else if (!isSearchModeActive) {
+			// Clear cache when search mode is deactivated to save memory
+			conversationMessagesCache.clear();
+		}
 	});
 
 	function toggleSelectionMode() {
@@ -344,7 +395,13 @@ Title:`
 					</Sidebar.MenuItem>
 				{/each}
 
-				{#if filteredConversations.length === 0}
+				{#if isLoadingMessages && searchQuery.trim().length > 0}
+					<div class="px-2 py-4 text-center">
+						<p class="mb-4 p-4 text-sm text-muted-foreground">
+							Searching through conversations...
+						</p>
+					</div>
+				{:else if filteredConversations.length === 0}
 					<div class="px-2 py-4 text-center">
 						<p class="mb-4 p-4 text-sm text-muted-foreground">
 							{searchQuery.length > 0
