@@ -37,6 +37,12 @@ import { normalizeFloatingPoint } from '$lib/utils/precision';
 import { ParameterSyncService } from '$lib/services/parameter-sync';
 import { serverStore } from '$lib/stores/server.svelte';
 import { setConfigValue, getConfigValue, configToParameterRecord } from '$lib/utils/config-helpers';
+import {
+	modelParamsStore,
+	loadModelParams,
+	saveModelParams,
+	setCurrentModel as setCurrentModelInParamsStore
+} from '$lib/stores/model-params.svelte';
 
 class SettingsStore {
 	config = $state<SettingsConfigType>({ ...SETTING_CONFIG_DEFAULT });
@@ -367,6 +373,93 @@ class SettingsStore {
 
 		return ParameterSyncService.createParameterDiff(configAsRecord, serverDefaults);
 	}
+
+	/**
+	 * Load model-specific parameters when a model is selected
+	 * @param apiBaseUrl - The API base URL
+	 * @param modelName - The model name
+	 */
+	loadModelSpecificParams(apiBaseUrl: string, modelName: string): void {
+		if (!apiBaseUrl || !modelName) return;
+
+		// Set the current model in the params store
+		setCurrentModelInParamsStore(apiBaseUrl, modelName);
+
+		// Load saved parameters for this model
+		const savedParams = loadModelParams(apiBaseUrl, modelName);
+
+		if (savedParams) {
+			// Model has been used before - load its saved parameters
+			const updates: Partial<SettingsConfigType> = {};
+			for (const [key, value] of Object.entries(savedParams)) {
+				if (key in this.config) {
+					updates[key as keyof SettingsConfigType] =
+						value as SettingsConfigType[keyof SettingsConfigType];
+				}
+			}
+
+			// Apply the updates without triggering model-specific save
+			Object.assign(this.config, updates);
+			this.saveConfig();
+
+			console.log(`Loaded saved parameters for ${modelName}:`, savedParams);
+		} else {
+			// New model - reset to default parameters
+			const defaultParams = modelParamsStore.getDefaultParams();
+			const updates: Partial<SettingsConfigType> = {};
+
+			for (const [key, value] of Object.entries(defaultParams)) {
+				if (key in this.config) {
+					updates[key as keyof SettingsConfigType] =
+						value as SettingsConfigType[keyof SettingsConfigType];
+				}
+			}
+
+			// Apply the default updates
+			Object.assign(this.config, updates);
+			this.saveConfig();
+
+			console.log(`No saved parameters found for ${modelName}, using defaults`);
+		}
+	}
+
+	/**
+	 * Save current parameters for the active model
+	 */
+	saveCurrentModelParams(): void {
+		const currentModel = modelParamsStore.getCurrentModel();
+		if (!currentModel) return;
+
+		saveModelParams(currentModel.apiBaseUrl, currentModel.modelName, this.config);
+	}
+
+	/**
+	 * Update config and save for current model
+	 */
+	updateConfigAndSaveForModel<K extends keyof SettingsConfigType>(
+		key: K,
+		value: SettingsConfigType[K]
+	): void {
+		this.updateConfig(key, value);
+		// Save to model-specific storage if this is a model-specific parameter
+		if (modelParamsStore.isModelSpecificParam(key as string)) {
+			this.saveCurrentModelParams();
+		}
+	}
+
+	/**
+	 * Update multiple configs and save for current model
+	 */
+	updateMultipleConfigAndSaveForModel(updates: Partial<SettingsConfigType>): void {
+		this.updateMultipleConfig(updates);
+		// Check if any model-specific parameters were updated
+		const hasModelSpecificUpdates = Object.keys(updates).some((key) =>
+			modelParamsStore.isModelSpecificParam(key)
+		);
+		if (hasModelSpecificUpdates) {
+			this.saveCurrentModelParams();
+		}
+	}
 }
 
 // Create and export the settings store instance
@@ -394,3 +487,9 @@ export const resetParameterToServerDefault =
 	settingsStore.resetParameterToServerDefault.bind(settingsStore);
 export const getParameterDiff = settingsStore.getParameterDiff.bind(settingsStore);
 export const clearAllUserOverrides = settingsStore.clearAllUserOverrides.bind(settingsStore);
+export const loadModelSpecificParams = settingsStore.loadModelSpecificParams.bind(settingsStore);
+export const saveCurrentModelParams = settingsStore.saveCurrentModelParams.bind(settingsStore);
+export const updateConfigAndSaveForModel =
+	settingsStore.updateConfigAndSaveForModel.bind(settingsStore);
+export const updateMultipleConfigAndSaveForModel =
+	settingsStore.updateMultipleConfigAndSaveForModel.bind(settingsStore);

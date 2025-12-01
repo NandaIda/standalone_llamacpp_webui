@@ -2,6 +2,7 @@ import { ModelsService } from '$lib/services/models';
 import { persisted } from '$lib/stores/persisted.svelte';
 import { SELECTED_MODEL_LOCALSTORAGE_KEY } from '$lib/constants/localstorage-keys';
 import type { ModelOption } from '$lib/types/models';
+import { settingsStore } from '$lib/stores/settings.svelte';
 
 type PersistedModelSelection = {
 	id: string;
@@ -96,6 +97,12 @@ class ModelsStore {
 			this._selectedModelName = selection.model;
 			this._persistedSelection.value =
 				selection.id && selection.model ? { id: selection.id, model: selection.model } : null;
+
+			// Load model-specific parameters for the initially selected model
+			const apiBaseUrl = settingsStore.getConfig('apiBaseUrl');
+			if (apiBaseUrl && selection.model) {
+				settingsStore.loadModelSpecificParams(apiBaseUrl, selection.model);
+			}
 		} catch (error) {
 			this._models = [];
 			this._error = error instanceof Error ? error.message : 'Failed to load models';
@@ -124,9 +131,18 @@ class ModelsStore {
 		this._error = null;
 
 		try {
+			// Save current model's parameters before switching
+			settingsStore.saveCurrentModelParams();
+
 			this._selectedModelId = option.id;
 			this._selectedModelName = option.model;
 			this._persistedSelection.value = { id: option.id, model: option.model };
+
+			// Load model-specific parameters for the new model
+			const apiBaseUrl = settingsStore.getConfig('apiBaseUrl');
+			if (apiBaseUrl && option.model) {
+				settingsStore.loadModelSpecificParams(apiBaseUrl, option.model);
+			}
 		} finally {
 			this._updating = false;
 		}

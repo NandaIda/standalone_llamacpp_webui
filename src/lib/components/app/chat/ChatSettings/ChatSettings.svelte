@@ -18,7 +18,11 @@
 		ChatSettingsFields
 	} from '$lib/components/app';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { config, updateMultipleConfig } from '$lib/stores/settings.svelte';
+	import {
+		config,
+		updateMultipleConfig,
+		saveCurrentModelParams
+	} from '$lib/stores/settings.svelte';
 	import { setMode } from 'mode-watcher';
 	import type { Component } from 'svelte';
 
@@ -356,6 +360,10 @@
 		}
 
 		updateMultipleConfig(processedConfig);
+
+		// Save model-specific parameters
+		saveCurrentModelParams();
+
 		onSave?.();
 	}
 
