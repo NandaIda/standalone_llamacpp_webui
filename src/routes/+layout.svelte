@@ -20,7 +20,18 @@
 	let isHomeRoute = $derived(page.route.id === '/');
 	let isNewChatMode = $derived(page.url.searchParams.get('new_chat') === 'true');
 	let showSidebarByDefault = $derived(activeMessages().length > 0 || isLoading());
-	let sidebarOpen = $state(false);
+
+	// Load persisted sidebar state from localStorage
+	function loadSidebarState() {
+		if (typeof window !== 'undefined') {
+			const saved = localStorage.getItem('sidebarOpen');
+			return saved ? saved === 'true' : false;
+		}
+		return false;
+	}
+
+	let sidebarOpen = $state(loadSidebarState());
+	let userClosedSidebar = $state(!loadSidebarState()); // If sidebar was closed, user closed it
 	let innerHeight = $state<number | undefined>();
 	let chatSidebar:
 		| { activateSearchMode?: () => void; editActiveConversation?: () => void }
@@ -74,19 +85,60 @@
 		}
 	}
 
+	let previousRoute = $state<string | null>(null);
+	let isInitialized = $state(false);
+
+	// Save sidebar state to localStorage whenever it changes
 	$effect(() => {
-		if (isHomeRoute && !isNewChatMode) {
-			// Auto-collapse sidebar when navigating to home route (but not in new chat mode)
-			sidebarOpen = false;
-		} else if (isHomeRoute && isNewChatMode) {
-			// Keep sidebar open in new chat mode
-			sidebarOpen = true;
-		} else if (isChatRoute) {
-			// On chat routes, show sidebar by default
-			sidebarOpen = true;
+		if (typeof window !== 'undefined' && isInitialized) {
+			localStorage.setItem('sidebarOpen', String(sidebarOpen));
+		}
+	});
+
+	$effect(() => {
+		const currentRouteId = page.route.id;
+		const routeChanged = previousRoute !== currentRouteId;
+
+		if (!isInitialized) {
+			// First load - just mark as initialized and respect the persisted state
+			isInitialized = true;
+			previousRoute = currentRouteId;
+			return;
+		}
+
+		if (routeChanged) {
+			// Route changed - apply automatic behavior based on route
+			if (isHomeRoute && !isNewChatMode) {
+				// Auto-collapse sidebar when navigating to home route (but not in new chat mode)
+				sidebarOpen = false;
+				userClosedSidebar = false; // Reset the flag when going to home
+			} else if (isHomeRoute && isNewChatMode) {
+				// Keep sidebar open in new chat mode only if user hasn't manually closed it
+				if (!userClosedSidebar) {
+					sidebarOpen = true;
+				}
+			} else if (isChatRoute) {
+				// On chat routes, respect user's manual preference
+				// Don't auto-open if user has explicitly closed the sidebar
+				if (!userClosedSidebar) {
+					sidebarOpen = true;
+				}
+			} else {
+				// Other routes follow default behavior
+				if (!userClosedSidebar) {
+					sidebarOpen = showSidebarByDefault;
+				}
+			}
+
+			previousRoute = currentRouteId;
 		} else {
-			// Other routes follow default behavior
-			sidebarOpen = showSidebarByDefault;
+			// Route didn't change - this is a manual toggle by the user
+			// Track user's preference
+			if (!sidebarOpen) {
+				userClosedSidebar = true;
+			} else {
+				userClosedSidebar = false;
+			}
 		}
 	});
 
