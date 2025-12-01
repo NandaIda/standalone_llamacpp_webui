@@ -76,6 +76,22 @@
 
 	let showEmptyFileDialog = $state(false);
 
+	// Check if we should hide the chat form (if conversation has generated images)
+	let shouldHideChatForm = $derived(() => {
+		const messages = activeMessages();
+
+		// Check if this conversation has any assistant messages with image attachments
+		const hasImageGeneratedMessages = messages.some(
+			(msg) =>
+				msg.role === 'assistant' &&
+				msg.extra &&
+				msg.extra.some((extra: DatabaseMessageExtra) => extra.type === 'imageFile')
+		);
+
+		// Hide chat form if conversation has generated images (prevent follow-up)
+		return hasImageGeneratedMessages && messages.length > 0;
+	});
+
 	let emptyFileNames = $state<string[]>([]);
 
 	let isEmpty = $derived(
@@ -332,17 +348,25 @@
 				<ChatScreenWarning class="pointer-events-auto mx-auto max-w-[48rem] px-4" />
 			{/if}
 
-			<div class="conversation-chat-form pointer-events-auto rounded-t-3xl pb-4">
-				<ChatForm
-					isLoading={isCurrentConversationLoading}
-					onFileRemove={handleFileRemove}
-					onFileUpload={handleFileUpload}
-					onSend={handleSendMessage}
-					onStop={() => stopGeneration()}
-					showHelperText={false}
-					bind:uploadedFiles
-				/>
-			</div>
+			{#if !shouldHideChatForm()}
+				<div class="conversation-chat-form pointer-events-auto rounded-t-3xl pb-4">
+					<ChatForm
+						isLoading={isCurrentConversationLoading}
+						onFileRemove={handleFileRemove}
+						onFileUpload={handleFileUpload}
+						onSend={handleSendMessage}
+						onStop={() => stopGeneration()}
+						showHelperText={false}
+						bind:uploadedFiles
+					/>
+				</div>
+			{:else}
+				<div class="pointer-events-auto mx-auto max-w-[48rem] px-4 pb-4 text-center">
+					<p class="text-sm text-muted-foreground">
+						Image generation complete. Edit your prompt above to generate a new image.
+					</p>
+				</div>
+			{/if}
 		</div>
 	</div>
 {:else if isServerLoading}

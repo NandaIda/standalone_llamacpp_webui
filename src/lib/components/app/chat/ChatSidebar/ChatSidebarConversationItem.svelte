@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Trash2, Pencil, MoreHorizontal, Download, Loader2, Sparkles } from '@lucide/svelte';
+	import { Trash2, Pencil, MoreHorizontal, Download, Loader2, Sparkles, Image } from '@lucide/svelte';
 	import { ActionDropdown } from '$lib/components/app';
 	import { downloadConversation, getAllLoadingConversations } from '$lib/stores/chat.svelte';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
@@ -15,6 +15,7 @@
 		onGenerateTitle?: (id: string) => void;
 		isSelectionMode?: boolean;
 		isSelected?: boolean;
+		isImageGeneration?: boolean;
 	}
 
 	let {
@@ -26,7 +27,8 @@
 		onGenerateTitle,
 		isActive = false,
 		isSelectionMode = false,
-		isSelected = false
+		isSelected = false,
+		isImageGeneration = false
 	}: Props = $props();
 
 	let renderActionsDropdown = $state(false);
@@ -105,6 +107,8 @@
 			</div>
 		{:else if isLoading}
 			<Loader2 class="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+		{:else if isImageGeneration}
+			<Image class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 		{/if}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->

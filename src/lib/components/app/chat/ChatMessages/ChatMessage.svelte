@@ -59,6 +59,14 @@
 		return null;
 	});
 
+	// Check if this is an image generation message
+	let isImageGenerationMessage = $derived.by(() => {
+		if (message.role === 'assistant' && message.extra && message.extra.length > 0) {
+			return message.extra.some((extra: DatabaseMessageExtra) => extra.type === 'imageFile');
+		}
+		return false;
+	});
+
 	let toolCallContent = $derived.by((): ApiChatCompletionToolCall[] | string | null => {
 		if (message.role === 'assistant') {
 			const trimmedToolCalls = message.toolCalls?.trim();
@@ -88,7 +96,73 @@
 	}
 
 	async function handleCopy() {
-		await copyToClipboard(message.content, 'Message copied to clipboard');
+		// If it's an image generation message, copy the image
+		if (isImageGenerationMessage && message.extra && message.extra.length > 0) {
+			const imageExtra = message.extra.find((extra: DatabaseMessageExtra) => extra.type === 'imageFile');
+			if (imageExtra && imageExtra.type === 'imageFile') {
+				try {
+					const base64Data = imageExtra.base64Url;
+
+					// Create an image element and load the base64 data
+					const img = new Image();
+
+					// Wait for image to load
+					await new Promise<void>((resolve, reject) => {
+						img.onload = () => resolve();
+						img.onerror = () => reject(new Error('Failed to load image'));
+						img.src = base64Data;
+					});
+
+					// Create canvas and draw image
+					const canvas = document.createElement('canvas');
+					canvas.width = img.width;
+					canvas.height = img.height;
+					const ctx = canvas.getContext('2d');
+
+					if (!ctx) {
+						throw new Error('Failed to get canvas context');
+					}
+
+					ctx.drawImage(img, 0, 0);
+
+					// Convert canvas to blob
+					const blob = await new Promise<Blob>((resolve, reject) => {
+						canvas.toBlob(
+							(blob) => {
+								if (blob) {
+									resolve(blob);
+								} else {
+									reject(new Error('Failed to convert canvas to blob'));
+								}
+							},
+							'image/png'
+						);
+					});
+
+					// Copy to clipboard
+					if (navigator.clipboard && navigator.clipboard.write) {
+						await navigator.clipboard.write([
+							new ClipboardItem({
+								'image/png': blob
+							})
+						]);
+
+						// Show success message
+						const toast = await import('svelte-sonner');
+						toast.toast.success('Image copied to clipboard');
+					} else {
+						throw new Error('Clipboard API not available');
+					}
+				} catch (error) {
+					console.error('Failed to copy image:', error);
+					// Fallback: copy the base64 URL as text
+					await copyToClipboard(imageExtra.base64Url, 'Image data copied as text (paste in browser URL to view)');
+				}
+			}
+		} else {
+			// Regular text copy
+			await copyToClipboard(message.content, 'Message copied to clipboard');
+		}
 		onCopy?.(message);
 	}
 
@@ -218,5 +292,6 @@
 		{siblingInfo}
 		{thinkingContent}
 		{toolCallContent}
+		{isImageGenerationMessage}
 	/>
 {/if}

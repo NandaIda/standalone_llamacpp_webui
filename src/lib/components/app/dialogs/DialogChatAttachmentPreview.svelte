@@ -2,6 +2,8 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { ChatAttachmentPreview } from '$lib/components/app';
 	import { formatFileSize } from '$lib/utils/file-preview';
+	import { Button } from '$lib/components/ui/button';
+	import { Download } from '@lucide/svelte';
 
 	interface Props {
 		open: boolean;
@@ -46,11 +48,32 @@
 
 	let displaySize = $derived(uploadedFile?.size || size);
 
+	let isImage = $derived(
+		displayType?.startsWith('image') || attachment?.type === 'imageFile'
+	);
+
+	let downloadUrl = $derived(
+		attachment?.type === 'imageFile'
+			? attachment.base64Url
+			: uploadedFile?.preview || preview
+	);
+
 	$effect(() => {
 		if (open && chatAttachmentPreviewRef) {
 			chatAttachmentPreviewRef.reset();
 		}
 	});
+
+	function downloadFile() {
+		if (!downloadUrl) return;
+
+		const link = document.createElement('a');
+		link.href = downloadUrl;
+		link.download = displayName;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	}
 </script>
 
 <Dialog.Root bind:open>
@@ -74,5 +97,14 @@
 			{type}
 			{textContent}
 		/>
+
+		{#if isImage && downloadUrl}
+			<Dialog.Footer>
+				<Button type="button" variant="default" onclick={downloadFile}>
+					<Download class="mr-2 h-4 w-4" />
+					Download Image
+				</Button>
+			</Dialog.Footer>
+		{/if}
 	</Dialog.Content>
 </Dialog.Root>

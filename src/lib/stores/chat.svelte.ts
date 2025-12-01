@@ -1,6 +1,6 @@
 import { DatabaseStore } from '$lib/stores/database';
 import { chatService, slotsService } from '$lib/services';
-import { config } from '$lib/stores/settings.svelte';
+import { config, settingsStore } from '$lib/stores/settings.svelte';
 import { serverStore } from '$lib/stores/server.svelte';
 import { normalizeModelName } from '$lib/utils/model-names';
 import { filterByLeafNodeId, findLeafNode, findDescendantMessages } from '$lib/utils/branching';
@@ -8,7 +8,7 @@ import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 import { toast } from 'svelte-sonner';
 import { SvelteMap } from 'svelte/reactivity';
-import type { ExportedConversations } from '$lib/types/database';
+import type { ExportedConversations, DatabaseMessageExtra } from '$lib/types/database';
 
 /**
  * ChatStore - Central state management for chat conversations and AI interactions
@@ -143,6 +143,39 @@ class ChatStore {
 			} else {
 				// Load all messages for conversations without currNode (backward compatibility)
 				this.activeMessages = await DatabaseStore.getConversationMessages(convId);
+			}
+
+			// Restore conversation state (image gen mode and model)
+			// Check if this conversation has image generation messages
+			const hasImageGeneration = this.activeMessages.some(
+				(msg) =>
+					msg.role === 'assistant' &&
+					msg.extra &&
+					msg.extra.some((extra: DatabaseMessageExtra) => extra.type === 'imageFile')
+			);
+
+			// Always set image generation mode based on conversation content (even if false)
+			settingsStore.updateConfig('imageGenerationMode', hasImageGeneration);
+
+			if (this.activeMessages.length > 0) {
+				// Restore the model that was used (get from the last assistant message with a model)
+				const lastAssistantMessageWithModel = [...this.activeMessages]
+					.reverse()
+					.find((msg) => msg.role === 'assistant' && msg.model);
+
+				if (lastAssistantMessageWithModel && lastAssistantMessageWithModel.model) {
+					// Find the model in the available models
+					const { modelsStore } = await import('$lib/stores/models.svelte');
+					const models = modelsStore.models;
+					const modelOption = models.find(
+						(m) => m.model === lastAssistantMessageWithModel.model
+					);
+
+					if (modelOption) {
+						// Select this model
+						await modelsStore.select(modelOption.id);
+					}
+				}
 			}
 
 			return true;
@@ -725,7 +758,68 @@ class ChatStore {
 
 			const conversationContext = this.activeMessages.slice(0, -1);
 
-			await this.streamChatCompletion(conversationContext, assistantMessage);
+			// Check if image generation mode is enabled
+			const currentConfig = this.getApiOptions();
+			const imageMode = settingsStore.getConfig('imageGenerationMode');
+
+			if (imageMode) {
+				// Generate image instead of text
+				try {
+					const startTime = Date.now();
+					const base64Image = await chatService.generateImage(content);
+					const endTime = Date.now();
+
+					// Calculate timing for image generation
+					const generationTimeMs = endTime - startTime;
+					const timings: ChatMessageTimings = {
+						predicted_ms: generationTimeMs,
+						predicted_n: 1 // Representing 1 image generated
+					};
+
+					// Get current model name
+					const { modelsStore } = await import('$lib/stores/models.svelte');
+					const currentModelName = modelsStore.selectedModelName;
+					const normalizedModel = currentModelName ? normalizeModelName(currentModelName) : null;
+
+					// Check if it's a URL or base64 data
+					const isUrl = base64Image.startsWith('http://') || base64Image.startsWith('https://');
+					const base64Url = isUrl ? base64Image : `data:image/png;base64,${base64Image}`;
+
+					// Create image attachment as extra
+					const imageExtra: DatabaseMessageExtra = {
+						type: 'imageFile',
+						name: 'generated-image.png',
+						base64Url: base64Url
+					};
+
+					// Update assistant message with empty content and image attachment
+					const messageIndex = this.findMessageIndex(assistantMessage.id);
+					this.updateMessageAtIndex(messageIndex, {
+						content: '',
+						type: 'text',
+						extra: [imageExtra],
+						timings: timings,
+						model: normalizedModel ?? undefined
+					});
+
+					// Persist to database
+					await DatabaseStore.updateMessage(assistantMessage.id, {
+						content: '',
+						type: 'text',
+						extra: [imageExtra],
+						timings: timings,
+						model: normalizedModel ?? undefined
+					});
+
+					this.setConversationLoading(this.activeConversation.id, false);
+				} catch (error) {
+					console.error('Image generation failed:', error);
+					throw error;
+				}
+			} else {
+				// Regular text chat completion
+				await this.streamChatCompletion(conversationContext, assistantMessage);
+			}
 		} catch (error) {
 			if (this.isAbortError(error)) {
 				this.setConversationLoading(this.activeConversation!.id, false);
@@ -957,6 +1051,12 @@ class ChatStore {
 				return;
 			}
 
+			// Check if the message being regenerated was an image generation
+			// (check BEFORE we delete it)
+			const wasImageGeneration =
+				messageToRegenerate.extra &&
+				messageToRegenerate.extra.some((extra: DatabaseMessageExtra) => extra.type === 'imageFile');
+
 			const messagesToRemove = this.activeMessages.slice(messageIndex);
 			for (const message of messagesToRemove) {
 				await DatabaseStore.deleteMessage(message.id);
@@ -984,7 +1084,72 @@ class ChatStore {
 
 				const conversationContext = this.activeMessages.slice(0, -1);
 
-				await this.streamChatCompletion(conversationContext, assistantMessage);
+				if (wasImageGeneration) {
+					// Get the user message prompt (last user message)
+					const userMessage = [...conversationContext].reverse().find((msg) => msg.role === 'user');
+					const prompt = userMessage?.content || '';
+
+					if (!prompt) {
+						throw new Error('No prompt found for image generation');
+					}
+
+					// Generate image instead of text
+					try {
+						const startTime = Date.now();
+						const base64Image = await chatService.generateImage(prompt);
+						const endTime = Date.now();
+
+						// Calculate timing for image generation
+						const generationTimeMs = endTime - startTime;
+						const timings: ChatMessageTimings = {
+							predicted_ms: generationTimeMs,
+							predicted_n: 1 // Representing 1 image generated
+						};
+
+						// Get current model name
+						const { modelsStore } = await import('$lib/stores/models.svelte');
+						const currentModelName = modelsStore.selectedModelName;
+						const normalizedModel = currentModelName ? normalizeModelName(currentModelName) : null;
+
+						// Check if it's a URL or base64 data
+						const isUrl = base64Image.startsWith('http://') || base64Image.startsWith('https://');
+						const base64Url = isUrl ? base64Image : `data:image/png;base64,${base64Image}`;
+
+						// Create image attachment as extra
+						const imageExtra: DatabaseMessageExtra = {
+							type: 'imageFile',
+							name: 'generated-image.png',
+							base64Url: base64Url
+						};
+
+						// Update assistant message with empty content and image attachment
+						const messageIndex = this.findMessageIndex(assistantMessage.id);
+						this.updateMessageAtIndex(messageIndex, {
+							content: '',
+							type: 'text',
+							extra: [imageExtra],
+							timings: timings,
+							model: normalizedModel ?? undefined
+						});
+
+						// Persist to database
+						await DatabaseStore.updateMessage(assistantMessage.id, {
+							content: '',
+							type: 'text',
+							extra: [imageExtra],
+							timings: timings,
+							model: normalizedModel ?? undefined
+						});
+
+						this.setConversationLoading(this.activeConversation.id, false);
+					} catch (error) {
+						console.error('Image generation failed:', error);
+						throw error;
+					}
+				} else {
+					// Regular text chat completion
+					await this.streamChatCompletion(conversationContext, assistantMessage);
+				}
 			} catch (regenerateError) {
 				console.error('Failed to regenerate response:', regenerateError);
 				this.setConversationLoading(this.activeConversation!.id, false);
@@ -1611,6 +1776,15 @@ class ChatStore {
 				return;
 			}
 
+			// Check if this conversation is an image generation conversation
+			// Look at all messages in the current conversation branch
+			const wasImageGeneration = this.activeMessages.some(
+				(msg) =>
+					msg.role === 'assistant' &&
+					msg.extra &&
+					msg.extra.some((extra: DatabaseMessageExtra) => extra.type === 'imageFile')
+			);
+
 			// Check if this is the first user message in the conversation
 			// First user message is one that has the root message as its parent
 			const allMessages = await DatabaseStore.getConversationMessages(this.activeConversation.id);
@@ -1662,7 +1836,7 @@ class ChatStore {
 			await this.refreshActiveMessages();
 
 			if (messageToEdit.role === 'user') {
-				await this.generateResponseForMessage(newMessage.id);
+				await this.generateResponseForMessage(newMessage.id, wasImageGeneration);
 			}
 		} catch (error) {
 			console.error('Failed to edit message with branching:', error);
@@ -1688,6 +1862,12 @@ class ChatStore {
 				console.error('Only assistant messages can be regenerated');
 				return;
 			}
+
+			// Check if the message being regenerated was an image generation
+			// (check BEFORE we create the branch)
+			const wasImageGeneration =
+				messageToRegenerate.extra &&
+				messageToRegenerate.extra.some((extra: DatabaseMessageExtra) => extra.type === 'imageFile');
 
 			// Find parent message in all conversation messages, not just active path
 			const conversationMessages = await DatabaseStore.getConversationMessages(
@@ -1731,7 +1911,68 @@ class ChatStore {
 				false
 			) as DatabaseMessage[];
 
-			await this.streamChatCompletion(conversationPath, newAssistantMessage);
+			if (wasImageGeneration) {
+				// Generate image instead of text
+				try {
+					const userMessage = [...conversationPath].reverse().find((msg) => msg.role === 'user');
+					const prompt = userMessage?.content || '';
+
+					if (!prompt) {
+						throw new Error('No prompt found for image generation');
+					}
+
+					const startTime = Date.now();
+					const base64Image = await chatService.generateImage(prompt);
+					const endTime = Date.now();
+
+					// Calculate timing for image generation
+					const generationTimeMs = endTime - startTime;
+					const timings: ChatMessageTimings = {
+						predicted_ms: generationTimeMs,
+						predicted_n: 1 // Representing 1 image generated
+					};
+
+					// Get current model name
+					const { modelsStore } = await import('$lib/stores/models.svelte');
+					const currentModelName = modelsStore.selectedModelName;
+					const normalizedModel = currentModelName ? normalizeModelName(currentModelName) : null;
+
+					const isUrl = base64Image.startsWith('http://') || base64Image.startsWith('https://');
+					const base64Url = isUrl ? base64Image : `data:image/png;base64,${base64Image}`;
+
+					const imageExtra: DatabaseMessageExtra = {
+						type: 'imageFile',
+						name: 'generated-image.png',
+						base64Url: base64Url
+					};
+
+					// Find the message in activeMessages and update it
+					const messageIndex = this.findMessageIndex(newAssistantMessage.id);
+					this.updateMessageAtIndex(messageIndex, {
+						content: '',
+						type: 'text',
+						extra: [imageExtra],
+						timings: timings,
+						model: normalizedModel ?? undefined
+					});
+
+					await DatabaseStore.updateMessage(newAssistantMessage.id, {
+						content: '',
+						type: 'text',
+						extra: [imageExtra],
+						timings: timings,
+						model: normalizedModel ?? undefined
+					});
+
+					this.setConversationLoading(this.activeConversation.id, false);
+				} catch (error) {
+					console.error('Image generation failed:', error);
+					throw error;
+				}
+			} else {
+				// Regular text chat completion
+				await this.streamChatCompletion(conversationPath, newAssistantMessage);
+			}
 		} catch (error) {
 			if (this.isAbortError(error)) return;
 
@@ -1743,8 +1984,9 @@ class ChatStore {
 	/**
 	 * Generates a new assistant response for a given user message
 	 * @param userMessageId - ID of user message to respond to
+	 * @param forceImageGeneration - Optional: force image generation mode (used when editing messages)
 	 */
-	private async generateResponseForMessage(userMessageId: string): Promise<void> {
+	private async generateResponseForMessage(userMessageId: string, forceImageGeneration?: boolean): Promise<void> {
 		if (!this.activeConversation) return;
 
 		this.errorDialogState = null;
@@ -1759,6 +2001,20 @@ class ChatStore {
 				userMessageId,
 				false
 			) as DatabaseMessage[];
+
+			// Check if this is an image generation conversation
+			// If forceImageGeneration is provided, use that; otherwise check the conversation path
+			let wasImageGeneration = forceImageGeneration ?? false;
+
+			if (!forceImageGeneration) {
+				// Check if any existing assistant messages have image attachments
+				wasImageGeneration = conversationPath.some(
+					(msg) =>
+						msg.role === 'assistant' &&
+						msg.extra &&
+						msg.extra.some((extra: DatabaseMessageExtra) => extra.type === 'imageFile')
+				);
+			}
 
 			// Create new assistant message branch
 			const assistantMessage = await DatabaseStore.createMessageBranch(
@@ -1779,8 +2035,68 @@ class ChatStore {
 			// Add assistant message to active messages immediately for UI reactivity
 			this.activeMessages.push(assistantMessage);
 
-			// Stream response to new assistant message
-			await this.streamChatCompletion(conversationPath, assistantMessage);
+			if (wasImageGeneration) {
+				// Generate image instead of text
+				try {
+					const userMessage = [...conversationPath].reverse().find((msg) => msg.role === 'user');
+					const prompt = userMessage?.content || '';
+
+					if (!prompt) {
+						throw new Error('No prompt found for image generation');
+					}
+
+					const startTime = Date.now();
+					const base64Image = await chatService.generateImage(prompt);
+					const endTime = Date.now();
+
+					// Calculate timing for image generation
+					const generationTimeMs = endTime - startTime;
+					const timings: ChatMessageTimings = {
+						predicted_ms: generationTimeMs,
+						predicted_n: 1 // Representing 1 image generated
+					};
+
+					// Get current model name
+					const { modelsStore } = await import('$lib/stores/models.svelte');
+					const currentModelName = modelsStore.selectedModelName;
+					const normalizedModel = currentModelName ? normalizeModelName(currentModelName) : null;
+
+					const isUrl = base64Image.startsWith('http://') || base64Image.startsWith('https://');
+					const base64Url = isUrl ? base64Image : `data:image/png;base64,${base64Image}`;
+
+					const imageExtra: DatabaseMessageExtra = {
+						type: 'imageFile',
+						name: 'generated-image.png',
+						base64Url: base64Url
+					};
+
+					// Find the message in activeMessages and update it
+					const messageIndex = this.findMessageIndex(assistantMessage.id);
+					this.updateMessageAtIndex(messageIndex, {
+						content: '',
+						type: 'text',
+						extra: [imageExtra],
+						timings: timings,
+						model: normalizedModel ?? undefined
+					});
+
+					await DatabaseStore.updateMessage(assistantMessage.id, {
+						content: '',
+						type: 'text',
+						extra: [imageExtra],
+						timings: timings,
+						model: normalizedModel ?? undefined
+					});
+
+					this.setConversationLoading(this.activeConversation.id, false);
+				} catch (error) {
+					console.error('Image generation failed:', error);
+					throw error;
+				}
+			} else {
+				// Regular text chat completion
+				await this.streamChatCompletion(conversationPath, assistantMessage);
+			}
 		} catch (error) {
 			console.error('Failed to generate response:', error);
 			this.setConversationLoading(this.activeConversation!.id, false);

@@ -42,7 +42,9 @@ export const SETTING_CONFIG_DEFAULT: Record<string, string | number | boolean> =
 	custom: '', // custom json-stringified object
 	// experimental features
 	pyInterpreterEnabled: false,
-	enableContinueGeneration: false
+	enableContinueGeneration: false,
+	// image generation
+	imageGenerationMode: false
 };
 
 export const SETTING_CONFIG_INFO: Record<string, string> = {

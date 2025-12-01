@@ -34,6 +34,32 @@
 	let selectedConversationIds = $state<Set<string>>(new Set());
 	let conversationMessagesCache = $state<Map<string, DatabaseMessage[]>>(new Map());
 	let isLoadingMessages = $state(false);
+	let imageGenerationConversations = $state<Set<string>>(new Set());
+
+	// Check if a conversation has image generation messages
+	async function checkImageGenerationConversations() {
+		const allConversations = conversations();
+		const imageConvIds = new Set<string>();
+
+		for (const conv of allConversations) {
+			try {
+				const messages = await DatabaseStore.getConversationMessages(conv.id);
+				const hasImageMessages = messages.some(
+					(msg) =>
+						msg.role === 'assistant' &&
+						msg.extra &&
+						msg.extra.some((extra: DatabaseMessageExtra) => extra.type === 'imageFile')
+				);
+				if (hasImageMessages) {
+					imageConvIds.add(conv.id);
+				}
+			} catch (error) {
+				console.error(`Failed to check messages for conversation ${conv.id}:`, error);
+			}
+		}
+
+		imageGenerationConversations = imageConvIds;
+	}
 
 	// Load messages for all conversations when search mode is activated
 	async function loadAllConversationMessages() {
@@ -91,6 +117,14 @@
 		} else if (!isSearchModeActive) {
 			// Clear cache when search mode is deactivated to save memory
 			conversationMessagesCache.clear();
+		}
+	});
+
+	// Check for image generation conversations when conversations change
+	$effect(() => {
+		const convs = conversations();
+		if (convs.length > 0) {
+			checkImageGenerationConversations();
 		}
 	});
 
@@ -391,6 +425,7 @@ Title:`
 							onGenerateTitle={handleGenerateTitle}
 							{isSelectionMode}
 							isSelected={selectedConversationIds.has(conversation.id)}
+							isImageGeneration={imageGenerationConversations.has(conversation.id)}
 						/>
 					</Sidebar.MenuItem>
 				{/each}

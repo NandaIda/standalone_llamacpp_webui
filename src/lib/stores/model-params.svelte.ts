@@ -43,7 +43,8 @@ const MODEL_SPECIFIC_PARAMS = [
 	'max_context',
 	'samplers',
 	'custom',
-	'systemMessage'
+	'systemMessage',
+	'imageGenerationMode'
 ] as const;
 
 type ModelParamKey = (typeof MODEL_SPECIFIC_PARAMS)[number];

@@ -26,6 +26,7 @@
 		onConfirmDelete: () => void;
 		onNavigateToSibling?: (siblingId: string) => void;
 		onShowDeleteDialogChange: (show: boolean) => void;
+		isImageGenerationMode?: boolean;
 	}
 
 	let {
@@ -42,7 +43,8 @@
 		onRegenerate,
 		role,
 		siblingInfo = null,
-		showDeleteDialog
+		showDeleteDialog,
+		isImageGenerationMode = false
 	}: Props = $props();
 
 	function handleConfirmDelete() {
@@ -66,7 +68,7 @@
 		>
 			<ActionButton icon={Copy} tooltip="Copy" onclick={onCopy} />
 
-			{#if onEdit}
+			{#if onEdit && !(role === 'assistant' && isImageGenerationMode)}
 				<ActionButton icon={Edit} tooltip="Edit" onclick={onEdit} />
 			{/if}
 

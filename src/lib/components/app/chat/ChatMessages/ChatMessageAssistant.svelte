@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChatMessageThinkingBlock, MarkdownContent } from '$lib/components/app';
+	import { ChatMessageThinkingBlock, MarkdownContent, ChatAttachmentsList } from '$lib/components/app';
 	import { useProcessingState } from '$lib/hooks/use-processing-state.svelte';
 	import { isLoading } from '$lib/stores/chat.svelte';
 	import autoResizeTextarea from '$lib/utils/autoresize-textarea';
@@ -56,6 +56,7 @@
 		textareaElement?: HTMLTextAreaElement;
 		thinkingContent: string | null;
 		toolCallContent: ApiChatCompletionToolCall[] | string | null;
+		isImageGenerationMessage?: boolean;
 	}
 
 	let {
@@ -83,7 +84,8 @@
 		siblingInfo = null,
 		textareaElement = $bindable(),
 		thinkingContent,
-		toolCallContent = null
+		toolCallContent = null,
+		isImageGenerationMessage = false
 	}: Props = $props();
 
 	const toolCalls = $derived(
@@ -231,6 +233,12 @@
 			</div>
 		</div>
 	{:else if message.role === 'assistant'}
+		{#if message.extra && message.extra.length > 0}
+			<div class="mb-4 max-w-[80%]">
+				<ChatAttachmentsList attachments={message.extra} readonly={true} imageHeight="h-80" />
+			</div>
+		{/if}
+
 		{#if config().disableReasoningFormat}
 			<pre class="raw-output">{messageContent || ''}</pre>
 		{:else}
@@ -354,6 +362,7 @@
 			{onConfirmDelete}
 			{onNavigateToSibling}
 			{onShowDeleteDialogChange}
+			isImageGenerationMode={isImageGenerationMessage}
 		/>
 	{/if}
 </div>

@@ -1038,6 +1038,105 @@ export class ChatService {
 				console.warn('Failed to update processing state:', error);
 			});
 	}
+
+	/**
+	 * Generates an image using the /v1/openai/images/generations endpoint
+	 * @param prompt - The text prompt for image generation
+	 * @param options - Image generation options (size, n, model)
+	 * @returns Promise<string> - Base64 encoded image data
+	 */
+	async generateImage(
+		prompt: string,
+		options: {
+			size?: string;
+			n?: number;
+			model?: string;
+		} = {}
+	): Promise<string> {
+		const currentConfig = config();
+		const apiKey = currentConfig.apiKey?.toString().trim();
+		let apiBaseUrl = currentConfig.apiBaseUrl?.toString().trim() || '.';
+
+		// Remove trailing slash
+		if (apiBaseUrl !== '.' && apiBaseUrl.endsWith('/')) {
+			apiBaseUrl = apiBaseUrl.slice(0, -1);
+		}
+
+		const isExternalApi = apiBaseUrl !== '.' && !apiBaseUrl.startsWith('/') &&
+			(apiBaseUrl.startsWith('http://') || apiBaseUrl.startsWith('https://'));
+
+		// Build the image generation endpoint
+		const imageEndpoint = isExternalApi
+			? `${apiBaseUrl}/images/generations`
+			: './v1/openai/images/generations';
+
+		const requestBody: any = {
+			prompt,
+			size: options.size || '1024x1024',
+			n: options.n || 1
+		};
+
+		const modelSelectorEnabled = Boolean(currentConfig.modelSelectorEnabled);
+		const activeModel = modelSelectorEnabled ? selectedModelName() : null;
+
+		if (options.model) {
+			requestBody.model = options.model;
+		} else if (modelSelectorEnabled && activeModel) {
+			requestBody.model = activeModel;
+		}
+
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json'
+		};
+
+		if (apiKey && apiKey.length > 0) {
+			headers.Authorization = `Bearer ${apiKey}`;
+		}
+
+		try {
+			const response = await fetch(imageEndpoint, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify(requestBody)
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				let errorMessage = `Image generation failed: ${response.status} ${response.statusText}`;
+
+				try {
+					const errorData = JSON.parse(errorText);
+					if (errorData.error?.message) {
+						errorMessage = errorData.error.message;
+					} else if (errorData.message) {
+						errorMessage = errorData.message;
+					}
+				} catch {
+					// If error is not JSON, use the text directly
+					if (errorText) {
+						errorMessage = errorText;
+					}
+				}
+
+				throw new Error(errorMessage);
+			}
+
+			const data = await response.json();
+
+			// Extract base64 image from response
+			if (data.data && data.data.length > 0 && data.data[0].b64_json) {
+				return data.data[0].b64_json;
+			} else if (data.data && data.data.length > 0 && data.data[0].url) {
+				// Some APIs return URLs instead of base64
+				return data.data[0].url;
+			} else {
+				throw new Error('No image data in response');
+			}
+		} catch (error) {
+			console.error('Image generation error:', error);
+			throw error;
+		}
+	}
 }
 
 export const chatService = new ChatService();

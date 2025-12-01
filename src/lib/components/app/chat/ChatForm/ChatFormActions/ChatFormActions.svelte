@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { Square, ArrowUp } from '@lucide/svelte';
+	import { Square, ArrowUp, Image as ImageIcon } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		ChatFormActionFileAttachments,
 		ChatFormActionRecord,
 		ChatFormModelSelector
 	} from '$lib/components/app';
-	import { config } from '$lib/stores/settings.svelte';
+	import { config, updateConfig, saveCurrentModelParams } from '$lib/stores/settings.svelte';
 	import type { FileTypeCategory } from '$lib/enums/files';
 
 	interface Props {
@@ -32,10 +32,29 @@
 	}: Props = $props();
 
 	let currentConfig = $derived(config());
+	let imageGenerationMode = $derived(currentConfig.imageGenerationMode || false);
+
+	function toggleImageGenerationMode() {
+		const newMode = !imageGenerationMode;
+		updateConfig('imageGenerationMode', newMode);
+		saveCurrentModelParams();
+	}
 </script>
 
 <div class="flex w-full items-center gap-2 {className}">
 	<ChatFormActionFileAttachments class="mr-auto" {disabled} {onFileUpload} />
+
+	<Button
+		type="button"
+		variant="ghost"
+		size="icon"
+		class="h-8 w-8 shrink-0 {imageGenerationMode ? 'bg-accent text-accent-foreground' : ''}"
+		onclick={toggleImageGenerationMode}
+		disabled={disabled || isLoading}
+		title={imageGenerationMode ? 'Image Generation Mode (ON)' : 'Image Generation Mode (OFF)'}
+	>
+		<ImageIcon class="h-4 w-4" />
+	</Button>
 
 	{#if currentConfig.modelSelectorEnabled}
 		<ChatFormModelSelector class="shrink-0" />
