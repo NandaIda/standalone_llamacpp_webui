@@ -465,7 +465,8 @@ export class ChatService {
 							}
 
 							const content = parsed.choices[0]?.delta?.content;
-							const reasoningContent = parsed.choices[0]?.delta?.reasoning_content;
+							// Support both OpenRouter format (reasoning) and OpenAI format (reasoning_content)
+							const reasoningContent = parsed.choices[0]?.delta?.reasoning || parsed.choices[0]?.delta?.reasoning_content;
 							const toolCalls = parsed.choices[0]?.delta?.tool_calls;
 							const timings = parsed.timings;
 							const promptProgress = parsed.prompt_progress;
@@ -696,7 +697,8 @@ export class ChatService {
 			}
 
 			let content = data.choices[0]?.message?.content || '';
-			let reasoningContent = data.choices[0]?.message?.reasoning_content;
+			// Support both OpenRouter format (reasoning) and OpenAI format (reasoning_content)
+			let reasoningContent = data.choices[0]?.message?.reasoning || data.choices[0]?.message?.reasoning_content;
 			const toolCalls = data.choices[0]?.message?.tool_calls;
 
 			// Parse <think> tags if present

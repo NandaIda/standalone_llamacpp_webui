@@ -211,10 +211,12 @@ export interface ApiChatCompletionStreamChunk {
 		metadata?: { model?: string };
 		delta: {
 			content?: string;
-			reasoning_content?: string;
+			reasoning_content?: string; // OpenAI format
+			reasoning?: string; // OpenRouter format
 			model?: string;
 			tool_calls?: ApiChatCompletionToolCallDelta[];
 		};
+		finish_reason?: string;
 	}>;
 	timings?: {
 		prompt_n?: number;
@@ -224,6 +226,11 @@ export interface ApiChatCompletionStreamChunk {
 		cache_n?: number;
 	};
 	prompt_progress?: ChatMessagePromptProgress;
+	usage?: {
+		prompt_tokens?: number;
+		completion_tokens?: number;
+		total_tokens?: number;
+	};
 }
 
 export interface ApiChatCompletionResponse {
@@ -233,11 +240,17 @@ export interface ApiChatCompletionResponse {
 		metadata?: { model?: string };
 		message: {
 			content: string;
-			reasoning_content?: string;
+			reasoning_content?: string; // OpenAI format
+			reasoning?: string; // OpenRouter format
 			model?: string;
 			tool_calls?: ApiChatCompletionToolCallDelta[];
 		};
 	}>;
+	usage?: {
+		prompt_tokens?: number;
+		completion_tokens?: number;
+		total_tokens?: number;
+	};
 }
 
 export interface ApiSlotData {
