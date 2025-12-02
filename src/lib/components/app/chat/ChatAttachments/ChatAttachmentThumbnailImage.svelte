@@ -2,6 +2,8 @@
 	import { RemoveButton } from '$lib/components/app';
 	import { Download } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { saveImage } from '$lib/utils/save-image';
+	import { toast } from 'svelte-sonner';
 
 	interface Props {
 		id: string;
@@ -31,17 +33,18 @@
 		imageClass = ''
 	}: Props = $props();
 
-	function downloadImage(event: MouseEvent) {
+	async function downloadImage(event: MouseEvent) {
 		event.stopPropagation();
 		event.preventDefault();
 
-		// Create a temporary link element
-		const link = document.createElement('a');
-		link.href = preview;
-		link.download = name || 'generated-image.png';
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
+		try {
+			const result = await saveImage(preview, name || 'generated-image.png');
+			toast.success(result.message);
+		} catch (error) {
+			console.error('Failed to save image:', error);
+			const errorMessage = error instanceof Error ? error.message : 'Failed to save image';
+			toast.error(errorMessage);
+		}
 	}
 </script>
 

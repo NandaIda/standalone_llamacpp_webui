@@ -4,6 +4,8 @@
 	import { formatFileSize } from '$lib/utils/file-preview';
 	import { Button } from '$lib/components/ui/button';
 	import { Download } from '@lucide/svelte';
+	import { saveImage } from '$lib/utils/save-image';
+	import { toast } from 'svelte-sonner';
 
 	interface Props {
 		open: boolean;
@@ -64,15 +66,17 @@
 		}
 	});
 
-	function downloadFile() {
+	async function downloadFile() {
 		if (!downloadUrl) return;
 
-		const link = document.createElement('a');
-		link.href = downloadUrl;
-		link.download = displayName;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
+		try {
+			const result = await saveImage(downloadUrl, displayName);
+			toast.success(result.message);
+		} catch (error) {
+			console.error('Failed to save image:', error);
+			const errorMessage = error instanceof Error ? error.message : 'Failed to save image';
+			toast.error(errorMessage);
+		}
 	}
 </script>
 
