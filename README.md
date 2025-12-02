@@ -68,6 +68,28 @@ npm run cap:open    # Open in Android Studio
 npm run cap:run     # Build, sync, and run on device
 ```
 
+## Firefox AI Chatbots Integration
+
+This application can be integrated with Firefox's built-in AI Chatbots feature. We use **port 8000** instead of the default 8080 to avoid Firefox's limitations.
+
+### Why Port 8000?
+
+Firefox has a fixed maximum length limit of **8192 characters** when using `localhost:8080`. By using a different port, you can bypass this limitation.
+
+### Setup Instructions
+
+1. Start the development server on port 8000:
+```bash
+npm run dev -- --port 8000
+```
+
+2. Configure Firefox by going to `about:config` and setting:
+   - `browser.ml.chat.hideLocalhost` = `false` (required to use localhost in AI chatbots)
+   - `browser.ml.chat.provider` = `http://localhost:8000`
+   - `browser.ml.chat.maxLength` = `1000000`
+
+With this configuration, the "Summarize Page" command and other AI features will no longer be limited by the 8192 character restriction.
+
 ## Configuration
 
 Configure your API endpoint in the app settings:
