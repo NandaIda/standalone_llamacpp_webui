@@ -93,6 +93,13 @@ class ChatStore {
 		const conversationName = name || `Chat ${new Date().toLocaleString()}`;
 		const conversation = await DatabaseStore.createConversation(conversationName);
 
+		// Store the currently selected model in the conversation
+		const { modelsStore } = await import('$lib/stores/models.svelte');
+		if (modelsStore.selectedModelName) {
+			conversation.model = modelsStore.selectedModelName;
+			await DatabaseStore.updateConversation(conversation.id, { model: modelsStore.selectedModelName });
+		}
+
 		this.conversations.unshift(conversation);
 
 		this.activeConversation = conversation;
@@ -157,24 +164,36 @@ class ChatStore {
 			// Always set image generation mode based on conversation content (even if false)
 			settingsStore.updateConfig('imageGenerationMode', hasImageGeneration);
 
-			if (this.activeMessages.length > 0) {
-				// Restore the model that was used (get from the last assistant message with a model)
+			// Restore the model that was used for this specific conversation
+			// We should check if there's a model associated with this conversation
+			// If not, we'll try to restore from last assistant message with model info
+			let modelToRestore = null;
+			if (conversation.model) {
+				// If the conversation has a model field set, use it
+				modelToRestore = conversation.model;
+			} else if (this.activeMessages.length > 0) {
+				// Otherwise, try to restore from last assistant message with model info
 				const lastAssistantMessageWithModel = [...this.activeMessages]
 					.reverse()
 					.find((msg) => msg.role === 'assistant' && msg.model);
 
 				if (lastAssistantMessageWithModel && lastAssistantMessageWithModel.model) {
-					// Find the model in the available models
-					const { modelsStore } = await import('$lib/stores/models.svelte');
-					const models = modelsStore.models;
-					const modelOption = models.find(
-						(m) => m.model === lastAssistantMessageWithModel.model
-					);
+					modelToRestore = lastAssistantMessageWithModel.model;
+				}
+			}
 
-					if (modelOption) {
-						// Select this model
-						await modelsStore.select(modelOption.id);
-					}
+			// If we have a model to restore, select it
+			if (modelToRestore) {
+				// Find the model in the available models
+				const { modelsStore } = await import('$lib/stores/models.svelte');
+				const models = modelsStore.models;
+				const modelOption = models.find(
+					(m) => m.model === modelToRestore
+				);
+
+				if (modelOption) {
+					// Select this model
+					await modelsStore.select(modelOption.id);
 				}
 			}
 

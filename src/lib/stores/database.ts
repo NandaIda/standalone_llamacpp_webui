@@ -8,8 +8,8 @@ class LlamacppDatabase extends Dexie {
 	constructor() {
 		super('LlamacppWebui');
 
-		this.version(1).stores({
-			conversations: 'id, lastModified, currNode, name',
+		this.version(2).stores({
+			conversations: 'id, lastModified, currNode, name, model',
 			messages: 'id, convId, type, role, timestamp, parent, children'
 		});
 	}
@@ -82,7 +82,8 @@ export class DatabaseStore {
 			id: uuid(),
 			name,
 			lastModified: Date.now(),
-			currNode: ''
+			currNode: '',
+			model: null
 		};
 
 		await db.conversations.add(conversation);
