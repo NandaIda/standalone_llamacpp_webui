@@ -17,6 +17,23 @@ This is a standalone web interface designed to work with OpenAI-compatible APIs.
 - File attachments (images, PDFs, audio, text)
 - Available as Android APK
 
+## Screenshots
+
+![Web View](Screenshot/Screenshot_2025-12-02_13-51-13.png)
+*Web View and read pdf as images*
+
+![Web View2](Screenshot/Screenshot_2025-12-02_13-52-34.png)
+*Web View and read pdf as images - response*
+
+![Mobile View](Screenshot/Screenshot_20251202_135513.jpg)
+*Mobile interface view*
+
+![Image Generation](Screenshot/Screenshot_20251202_135501.jpg)
+*AI image generation feature*
+
+![Chat Interface](Screenshot/Screenshot_2025-12-02_13-48-54.png)
+*Compitable with AI chatbots in Firefox*
+
 ## Platform Support
 
 Available for web browsers and as an Android application (APK).
