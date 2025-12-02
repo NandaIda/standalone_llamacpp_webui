@@ -7,6 +7,7 @@
 		ChatFormModelSelector
 	} from '$lib/components/app';
 	import { config, updateConfig, saveCurrentModelParams } from '$lib/stores/settings.svelte';
+	import { toast } from 'svelte-sonner';
 	import type { FileTypeCategory } from '$lib/enums/files';
 
 	interface Props {
@@ -38,6 +39,17 @@
 		const newMode = !imageGenerationMode;
 		updateConfig('imageGenerationMode', newMode);
 		saveCurrentModelParams();
+
+		// Show toast notification when image generation mode is toggled
+		if (newMode) {
+			toast.success('Image Generation Mode enabled', {
+				duration: 3000
+			});
+		} else {
+			toast.success('Image Generation Mode disabled', {
+				duration: 3000
+			});
+		}
 	}
 </script>
 
