@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.aichat.webui',
   appName: 'AI Chat',
-  webDir: '../public',
+  webDir: 'public',
   server: {
     androidScheme: 'https',
     // For debugging: uncomment to enable live reload from dev server

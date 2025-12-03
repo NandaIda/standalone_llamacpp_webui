@@ -78,9 +78,9 @@ Firefox has a fixed maximum length limit of **8192 characters** when using `loca
 
 ### Setup Instructions
 
-1. Start the development server on port 8000:
+1. Start the development server, will automatically open port 8000:
 ```bash
-npm run dev -- --port 8000
+npm run dev
 ```
 
 2. Configure Firefox by going to `about:config` and setting:
