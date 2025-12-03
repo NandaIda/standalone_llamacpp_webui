@@ -511,8 +511,19 @@
 									llama.cpp
 								</a>
 							</p>
-							<p class="mb-6 text-xs text-muted-foreground">
+							<p class="mb-2 text-xs text-muted-foreground">
 								All credit goes to the llama.cpp team and contributors.
+							</p>
+							<p class="mb-6 text-sm text-muted-foreground">
+								Repository:
+								<a
+									href="https://github.com/NandaIda/standalone_llamacpp_webui"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="text-primary underline hover:text-primary/80"
+								>
+									github.com/NandaIda/standalone_llamacpp_webui
+								</a>
 							</p>
 
 							<div class="space-y-4">

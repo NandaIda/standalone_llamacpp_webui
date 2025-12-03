@@ -4,6 +4,8 @@ Modified from llama.cpp
 
 All credit goes to the llama.cpp team and contributors.
 
+**Live Demo:** https://standalone-llamacpp-webui.vercel.app/
+
 ## Purpose
 
 This is a standalone web interface designed to work with OpenAI-compatible APIs. It can be used with llama-server and other providers that support the OpenAI API format.
