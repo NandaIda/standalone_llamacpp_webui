@@ -6,6 +6,28 @@ All credit goes to the llama.cpp team and contributors.
 
 **Live Demo:** https://standalone-llamacpp-webui.vercel.app/
 
+<details>
+<summary><strong>Live Demo: All data (API keys, chat history, parameters) is stored in your browser only - safe client-side storage, no server storage.</strong></summary>
+
+### Data Storage & Privacy
+
+When using the live demo (or any deployed version), all your data is stored **locally in your browser**:
+
+- **API Keys**: Stored in your browser's localStorage
+- **Chat History**: Stored in your browser's IndexedDB database
+- **Settings & Parameters**: Stored in your browser's localStorage
+
+**Important:**
+- ✅ **No server storage**: Your data never reaches Vercel or any server
+- ✅ **Client-side only**: Everything stays on your device
+- ✅ **Privacy**: Each user's data is isolated to their own browser
+- ⚠️ **Browser access**: Anyone with access to your browser can view this data
+- ⚠️ **Device-specific**: Data doesn't sync across devices
+
+This is a static web application with no backend. All processing happens in your browser.
+
+</details>
+
 ## Purpose
 
 This is a standalone web interface designed to work with OpenAI-compatible APIs. It can be used with llama-server and other providers that support the OpenAI API format.
