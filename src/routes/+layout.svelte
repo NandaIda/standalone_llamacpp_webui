@@ -219,11 +219,43 @@
 						await chatStore.initialize();
 					}
 
-					// Navigate to home and create new conversation with shared text
+					// Navigate to home and create new conversation
 					await goto('/#/');
 					chatStore.clearActiveConversation();
 					await chatStore.createConversation();
-					await chatStore.sendMessage(text);
+
+					// Get the paste threshold setting
+					const currentConfig = config();
+					const pasteLongTextToFileLength = Number(currentConfig.pasteLongTextToFileLen) || 2500;
+
+					// Check if text exceeds threshold - if so, convert to file
+					if (
+						text.length > 0 &&
+						pasteLongTextToFileLength > 0 &&
+						text.length > pasteLongTextToFileLength
+					) {
+						// Import required utilities dynamically
+						const { parseFilesToMessageExtras } = await import('$lib/utils/convert-files-to-extra');
+						const { processFilesToChatUploaded } = await import('$lib/utils/process-uploaded-files');
+						const { MimeTypeText } = await import('$lib/enums/files');
+
+						// Create a file from the shared text
+						const textFile = new File([text], 'Shared Text', {
+							type: MimeTypeText.PLAIN
+						});
+
+						// Process the file to ChatUploadedFile format
+						const uploadedFiles = await processFilesToChatUploaded([textFile]);
+
+						// Convert to message extras
+						const result = await parseFilesToMessageExtras(uploadedFiles);
+
+						// Send as file attachment with empty message
+						await chatStore.sendMessage('', result?.extras);
+					} else {
+						// Text is below threshold - send normally
+						await chatStore.sendMessage(text);
+					}
 				} catch (error) {
 					console.error('Error handling shared text:', error);
 				}
