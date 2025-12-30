@@ -251,6 +251,13 @@
 
 		return options[0];
 	}
+
+	function truncateModelName(name: string, maxLength: number = 10): string {
+		if (name.length <= maxLength) {
+			return name;
+		}
+		return name.slice(0, maxLength) + '…';
+	}
 </script>
 
 <svelte:window onresize={handleResize} />
@@ -258,7 +265,7 @@
 <svelte:document onpointerdown={handlePointerDown} onkeydown={handleKeydown} />
 
 <div
-	class={cn('relative z-10 flex max-w-[200px] min-w-[120px] flex-col items-end gap-1', className)}
+	class={cn('relative z-10 flex max-w-[100px] min-w-[80px] flex-col items-end gap-1', className)}
 	bind:this={container}
 >
 	{#if loading && options.length === 0 && !isMounted}
@@ -283,9 +290,10 @@
 				onclick={toggleOpen}
 				bind:this={triggerButton}
 				disabled={loading || updating}
+				title={selectedOption?.name}
 			>
-				<span class="max-w-[160px] truncate text-right font-medium">
-					{selectedOption?.name || 'Select model'}
+				<span class="text-right font-medium">
+					{selectedOption?.name ? truncateModelName(selectedOption.name) : 'Select model'}
 				</span>
 
 				{#if updating}
@@ -331,7 +339,7 @@
 								aria-selected={option.id === selectedOption?.id}
 								onclick={() => handleOptionSelect(option.id)}
 							>
-								<span class="block w-full truncate font-medium" title={option.name}>
+								<span class="block w-full break-words font-medium">
 									{option.name}
 								</span>
 

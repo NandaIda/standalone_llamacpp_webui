@@ -153,6 +153,25 @@
 		}
 	}
 
+	function handlePasteDetected(pastedText: string): boolean {
+		// Android fallback: handle paste detection from input event
+		// Returns true if the paste was handled (should remove text from textarea)
+		if (
+			pastedText.length > 0 &&
+			pasteLongTextToFileLength > 0 &&
+			pastedText.length > pasteLongTextToFileLength
+		) {
+			const textFile = new File([pastedText], 'Pasted', {
+				type: MimeTypeText.PLAIN
+			});
+
+			onFileUpload?.([textFile]);
+			return true; // Indicate that we handled this paste (text should be removed)
+		}
+
+		return false; // Let the text stay in the textarea
+	}
+
 	async function handleMicClick() {
 		if (!speechRecognitionSupported || !recognition) {
 			console.warn('Speech recognition not supported');
@@ -285,12 +304,13 @@
 
 	<div
 		class="flex-column relative min-h-[48px] items-center rounded-3xl px-5 py-3 shadow-sm transition-all focus-within:shadow-md"
-		onpaste={handlePaste}
 	>
 		<ChatFormTextarea
 			bind:this={textareaRef}
 			bind:value={message}
 			onKeydown={handleKeydown}
+			onPaste={handlePaste}
+			onPasteDetected={handlePasteDetected}
 			{disabled}
 		/>
 

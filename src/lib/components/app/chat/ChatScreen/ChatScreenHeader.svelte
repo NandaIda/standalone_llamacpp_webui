@@ -3,11 +3,21 @@
 	import { DialogChatSettings } from '$lib/components/app';
 	import { Button } from '$lib/components/ui/button';
 	import ChatScreenHeaderNewChat from './ChatScreenHeaderNewChat.svelte';
+	import { fetchModels } from '$lib/stores/models.svelte';
 
 	let settingsOpen = $state(false);
 
 	function toggleSettings() {
 		settingsOpen = true;
+	}
+
+	function handleSettingsOpenChange(open: boolean) {
+		settingsOpen = open;
+
+		// Refresh models list when settings dialog is closed
+		if (!open) {
+			fetchModels(true);
+		}
 	}
 </script>
 
@@ -22,4 +32,4 @@
 	</div>
 </header>
 
-<DialogChatSettings open={settingsOpen} onOpenChange={(open) => (settingsOpen = open)} />
+<DialogChatSettings open={settingsOpen} onOpenChange={handleSettingsOpenChange} />
