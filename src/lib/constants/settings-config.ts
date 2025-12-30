@@ -49,7 +49,7 @@ export const SETTING_CONFIG_DEFAULT: Record<string, string | number | boolean> =
 
 export const SETTING_CONFIG_INFO: Record<string, string> = {
 	apiKey: 'Set the API Key if you are using --api-key option for the server.',
-	apiBaseUrl: 'Base URL for the API endpoint. Use "." for local llama.cpp server, or "https://api.deepinfra.com/v1/openai" for DeepInfra.',
+	apiBaseUrl: 'Base URL for the API endpoint. Use "." for local llama.cpp server, or "https://api.deepinfra.com/v1/openai" for DeepInfra. ⚠️ When using HTTP URLs, ensure the connection is secure (e.g., via Tailscale or local network).',
 	systemMessage: 'The starting message that defines how model should behave.',
 	theme:
 		'Choose the color theme for the interface. You can choose between System (follows your device settings), Light, or Dark.',

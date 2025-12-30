@@ -13,6 +13,7 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import { Toaster } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
+	import { chatStore, isInitialized as chatIsInitialized } from '$lib/stores/chat.svelte';
 
 	let { children } = $props();
 
@@ -206,6 +207,28 @@
 				titleUpdateDialogOpen = true;
 			});
 		});
+	});
+
+	// Global handler for Android shared text - called from native code
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			(window as any).handleSharedText = async (text: string) => {
+				try {
+					// Ensure chat store is initialized
+					if (!chatIsInitialized) {
+						await chatStore.initialize();
+					}
+
+					// Navigate to home and create new conversation with shared text
+					await goto('/#/');
+					chatStore.clearActiveConversation();
+					await chatStore.createConversation();
+					await chatStore.sendMessage(text);
+				} catch (error) {
+					console.error('Error handling shared text:', error);
+				}
+			};
+		}
 	});
 </script>
 

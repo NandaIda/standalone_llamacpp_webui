@@ -179,6 +179,12 @@ adb logcat
 
 # Clean build
 cd android && ./gradlew clean && cd ..
+
+# Or build debug
+cd android && ./gradlew assembleDebug
+
+# The debug apk is in
+android/app/build/outputs/apk/debug/
 ```
 
 ## Troubleshooting
