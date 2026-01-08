@@ -102,6 +102,8 @@ export class ChatService {
 			// Generation parameters
 			temperature,
 			max_tokens,
+			max_completion_tokens,
+			reasoning_effort,
 			max_context,
 			// Sampling parameters
 			dynatemp_range,
@@ -177,10 +179,18 @@ export class ChatService {
 		requestBody.reasoning_format = currentConfig.disableReasoningFormat ? 'none' : 'auto';
 
 		if (temperature !== undefined) requestBody.temperature = temperature;
+
+		// Initial logic: Prefer max_tokens as requested, unless explicitly set otherwise
 		if (max_tokens !== undefined) {
-			// Set max_tokens to -1 (infinite) when explicitly configured as 0 or null
 			requestBody.max_tokens = max_tokens !== null && max_tokens !== 0 ? max_tokens : -1;
+		} else if (max_completion_tokens !== undefined && max_completion_tokens !== null && max_completion_tokens !== 0 && max_completion_tokens !== -1) {
+			requestBody.max_completion_tokens = max_completion_tokens;
 		}
+
+		if (reasoning_effort !== undefined && reasoning_effort !== 'none') {
+			requestBody.reasoning_effort = reasoning_effort;
+		}
+
 		if (max_context !== undefined) requestBody.max_context = max_context;
 
 		if (dynatemp_range !== undefined) requestBody.dynatemp_range = dynatemp_range;
@@ -237,20 +247,36 @@ export class ChatService {
 
 			// Filter out llama.cpp-specific parameters for external APIs
 			if (isExternalApi) {
-				// Remove unsupported parameters
-				delete requestBody.reasoning_format;
-				delete requestBody.dynatemp_range;
-				delete requestBody.dynatemp_exponent;
-				delete requestBody.xtc_probability;
-				delete requestBody.xtc_threshold;
-				delete requestBody.typ_p;
-				delete requestBody.dry_multiplier;
-				delete requestBody.dry_base;
-				delete requestBody.dry_allowed_length;
-				delete requestBody.dry_penalty_last_n;
-				delete requestBody.samplers;
-				delete requestBody.timings_per_token;
-				delete requestBody.max_context;
+				// Keep only standard OpenAI parameters
+				const standardParams = {
+					messages: requestBody.messages,
+					model: requestBody.model,
+					stream: requestBody.stream,
+					temperature: requestBody.temperature,
+					top_p: requestBody.top_p,
+					presence_penalty: requestBody.presence_penalty,
+					max_tokens: requestBody.max_tokens,
+					max_completion_tokens: requestBody.max_completion_tokens,
+					reasoning_effort: requestBody.reasoning_effort,
+					stop: requestBody.stop,
+					tools: requestBody.tools,
+					tool_choice: requestBody.tool_choice,
+					response_format: requestBody.response_format,
+					n: requestBody.n,
+					logit_bias: requestBody.logit_bias,
+					user: requestBody.user
+				};
+
+				// Remove undefined values
+				Object.keys(standardParams).forEach(key => {
+					if ((standardParams as any)[key] === undefined) {
+						delete (standardParams as any)[key];
+					}
+				});
+
+				// Overwrite requestBody with filtered standard parameters
+				Object.keys(requestBody).forEach(key => delete (requestBody as any)[key]);
+				Object.assign(requestBody, standardParams);
 
 				// Remove max_tokens if it's -1 (infinite in llama.cpp, invalid for external APIs)
 				if (requestBody.max_tokens === -1) {
@@ -261,18 +287,70 @@ export class ChatService {
 				console.log('Request body:', JSON.stringify(requestBody, null, 2));
 			}
 
-			const response = await fetch(chatEndpoint, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
-				},
-				body: JSON.stringify(requestBody),
-				signal: abortController.signal
-			});
+			let response: Response | undefined;
+			let attempts = 0;
+			const maxAttempts = 3;
 
-			if (!response.ok) {
-				const error = await this.parseErrorResponse(response);
+			while (attempts < maxAttempts) {
+				attempts++;
+				
+				response = await fetch(chatEndpoint, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {})
+					},
+					body: JSON.stringify(requestBody),
+					signal: abortController.signal
+				});
+
+				if (response.ok) break;
+
+				// If request failed with 400, check for known compatibility issues and retry
+				if (response.status === 400) {
+					try {
+						const errorClone = response.clone();
+						const errorText = await errorClone.text();
+						let retrying = false;
+
+						// Case 1: Reasoning effort not supported
+						if ((errorText.includes("Thinking is not enabled") || 
+							 errorText.includes("reasoning_effort") ||
+							 errorText.includes("INVALID_ARGUMENT")) && 
+							 requestBody.reasoning_effort) {
+							
+							console.warn("Server rejected reasoning_effort, retrying without it.");
+							delete requestBody.reasoning_effort;
+							retrying = true;
+						}
+
+						// Case 2: max_tokens not supported (e.g. o1 models require max_completion_tokens)
+						// Check for "unknown name" or explicit mention of max_tokens/max_completion_tokens
+						if ((errorText.includes("max_tokens") || 
+							 errorText.includes("max_completion_tokens") ||
+							 errorText.includes("unknown name \"max_tokens\"")) && 
+							 requestBody.max_tokens !== undefined) {
+							
+							console.warn("Server rejected max_tokens, swapping to max_completion_tokens.");
+							requestBody.max_completion_tokens = requestBody.max_tokens;
+							delete requestBody.max_tokens;
+							retrying = true;
+						}
+
+						if (retrying) {
+							continue; // Retry the loop
+						}
+					} catch (e) {
+						console.warn("Error checking retry conditions:", e);
+					}
+				}
+
+				// If not retryable or unknown error, break
+				break;
+			}
+
+			if (!response || !response.ok) {
+				const error = await this.parseErrorResponse(response || new Response(null, { status: 500 }));
 				if (onError) {
 					onError(error);
 				}

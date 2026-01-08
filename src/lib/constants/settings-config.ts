@@ -38,6 +38,8 @@ export const SETTING_CONFIG_DEFAULT: Record<string, string | number | boolean> =
 	dry_allowed_length: 2,
 	dry_penalty_last_n: -1,
 	max_tokens: -1,
+	max_completion_tokens: -1,
+	reasoning_effort: 'medium',
 	max_context: -1,
 	custom: '', // custom json-stringified object
 	// experimental features
@@ -84,7 +86,9 @@ export const SETTING_CONFIG_INFO: Record<string, string> = {
 		'DRY sampling reduces repetition in generated text even across long contexts. This parameter sets the allowed length for DRY sampling.',
 	dry_penalty_last_n:
 		'DRY sampling reduces repetition in generated text even across long contexts. This parameter sets DRY penalty for the last n tokens.',
-	max_tokens: 'The maximum number of token per output. Use -1 for infinite (no limit).',
+	max_tokens: 'The maximum number of token per output. Use -1 for infinite (no limit). (Deprecated in favor of max_completion_tokens for newer models)',
+	max_completion_tokens: 'An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens. Use -1 for infinite.',
+	reasoning_effort: 'Constrains effort on reasoning for reasoning models (e.g. o1, o3). Supported values: none, minimal, low, medium, high.',
 	max_context: 'Maximum context window size in tokens for display purposes. Use -1 to follow the API/model\'s default context window (e.g., 32k, 128k, 200k depending on the model).',
 	custom: 'Custom JSON parameters to send to the API. Must be valid JSON format.',
 	showTokensPerSecond: 'Display generation speed in tokens per second during streaming.',

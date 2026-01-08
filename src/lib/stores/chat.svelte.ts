@@ -299,6 +299,12 @@ class ChatStore {
 		if (hasValue(currentConfig.max_tokens)) {
 			apiOptions.max_tokens = Number(currentConfig.max_tokens);
 		}
+		if (hasValue(currentConfig.max_completion_tokens)) {
+			apiOptions.max_completion_tokens = Number(currentConfig.max_completion_tokens);
+		}
+		if (hasValue(currentConfig.reasoning_effort) && currentConfig.reasoning_effort !== 'none') {
+			apiOptions.reasoning_effort = currentConfig.reasoning_effort;
+		}
 		if (hasValue(currentConfig.dynatemp_range)) {
 			apiOptions.dynatemp_range = Number(currentConfig.dynatemp_range);
 		}

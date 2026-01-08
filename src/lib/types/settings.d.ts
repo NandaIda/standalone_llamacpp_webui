@@ -17,6 +17,8 @@ export interface SettingsChatServiceOptions {
 	// Generation parameters
 	temperature?: number;
 	max_tokens?: number;
+	max_completion_tokens?: number;
+	reasoning_effort?: 'none' | 'minimal' | 'low' | 'medium' | 'high';
 	max_context?: number;
 	// Sampling parameters
 	dynatemp_range?: number;

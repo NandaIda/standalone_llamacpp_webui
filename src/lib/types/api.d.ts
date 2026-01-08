@@ -161,7 +161,16 @@ export interface ApiChatCompletionRequest {
 	// Generation parameters
 	temperature?: number;
 	max_tokens?: number;
+	max_completion_tokens?: number;
+	reasoning_effort?: string;
 	max_context?: number;
+	stop?: string | string[];
+	tools?: any[];
+	tool_choice?: any;
+	response_format?: any;
+	n?: number;
+	logit_bias?: Record<string, number>;
+	user?: string;
 	// Sampling parameters
 	dynatemp_range?: number;
 	dynatemp_exponent?: number;

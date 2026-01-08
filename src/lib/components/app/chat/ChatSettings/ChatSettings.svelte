@@ -132,43 +132,8 @@
 					type: 'input'
 				},
 				{
-					key: 'dynatemp_range',
-					label: 'Dynamic temperature range',
-					type: 'input'
-				},
-				{
-					key: 'dynatemp_exponent',
-					label: 'Dynamic temperature exponent',
-					type: 'input'
-				},
-				{
-					key: 'top_k',
-					label: 'Top K',
-					type: 'input'
-				},
-				{
 					key: 'top_p',
 					label: 'Top P',
-					type: 'input'
-				},
-				{
-					key: 'min_p',
-					label: 'Min P',
-					type: 'input'
-				},
-				{
-					key: 'xtc_probability',
-					label: 'XTC probability',
-					type: 'input'
-				},
-				{
-					key: 'xtc_threshold',
-					label: 'XTC threshold',
-					type: 'input'
-				},
-				{
-					key: 'typ_p',
-					label: 'Typical P',
 					type: 'input'
 				},
 				{
@@ -177,29 +142,20 @@
 					type: 'input'
 				},
 				{
+					key: 'reasoning_effort',
+					label: 'Reasoning effort (o1/o3)',
+					type: 'select',
+					options: [
+						{ value: 'none', label: 'None' },
+						{ value: 'minimal', label: 'Minimal' },
+						{ value: 'low', label: 'Low' },
+						{ value: 'medium', label: 'Medium' },
+						{ value: 'high', label: 'High' }
+					]
+				},
+				{
 					key: 'max_context',
 					label: 'Max context',
-					type: 'input'
-				},
-				{
-					key: 'samplers',
-					label: 'Samplers',
-					type: 'input'
-				}
-			]
-		},
-		{
-			title: 'Penalties',
-			icon: AlertTriangle,
-			fields: [
-				{
-					key: 'repeat_last_n',
-					label: 'Repeat last N',
-					type: 'input'
-				},
-				{
-					key: 'repeat_penalty',
-					label: 'Repeat penalty',
 					type: 'input'
 				},
 				{
@@ -208,28 +164,8 @@
 					type: 'input'
 				},
 				{
-					key: 'frequency_penalty',
-					label: 'Frequency penalty',
-					type: 'input'
-				},
-				{
-					key: 'dry_multiplier',
-					label: 'DRY multiplier',
-					type: 'input'
-				},
-				{
-					key: 'dry_base',
-					label: 'DRY base',
-					type: 'input'
-				},
-				{
-					key: 'dry_allowed_length',
-					label: 'DRY allowed length',
-					type: 'input'
-				},
-				{
-					key: 'dry_penalty_last_n',
-					label: 'DRY penalty last N',
+					key: 'samplers',
+					label: 'Samplers',
 					type: 'input'
 				}
 			]
@@ -326,25 +262,11 @@
 		const processedConfig = { ...localConfig };
 		const numericFields = [
 			'temperature',
-			'top_k',
 			'top_p',
-			'min_p',
 			'max_tokens',
-			'max_context',
-			'pasteLongTextToFileLen',
-			'dynatemp_range',
-			'dynatemp_exponent',
-			'typ_p',
-			'xtc_probability',
-			'xtc_threshold',
-			'repeat_last_n',
-			'repeat_penalty',
 			'presence_penalty',
-			'frequency_penalty',
-			'dry_multiplier',
-			'dry_base',
-			'dry_allowed_length',
-			'dry_penalty_last_n'
+			'max_context',
+			'pasteLongTextToFileLen'
 		];
 
 		for (const field of numericFields) {
