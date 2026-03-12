@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { filterByLeafNodeId, findDescendantMessages } from '$lib/utils/branching';
+import { v4 as uuid } from 'uuid';
 
 class LlamacppDatabase extends Dexie {
 	conversations!: EntityTable<DatabaseConversation, string>;
@@ -18,21 +19,21 @@ class LlamacppDatabase extends Dexie {
 const db = new LlamacppDatabase();
 
 /**
- * DatabaseStore - Persistent data layer for conversation and message management
+ * DatabaseService - Persistent data layer for conversation and message management
  *
  * This service provides a comprehensive data access layer built on IndexedDB using Dexie.
  * It handles all persistent storage operations for conversations, messages, and application settings
  * with support for complex conversation branching and message threading.
  *
  * **Architecture & Relationships:**
- * - **DatabaseStore** (this class): Stateless data persistence layer
+ * - **DatabaseService** (this class): Stateless data persistence layer
  *   - Manages IndexedDB operations through Dexie ORM
  *   - Handles conversation and message CRUD operations
  *   - Supports complex branching with parent-child relationships
  *   - Provides transaction safety for multi-table operations
  *
  * - **ChatStore**: Primary consumer for conversation state management
- *   - Uses DatabaseStore for all persistence operations
+ *   - Uses DatabaseService for all persistence operations
  *   - Coordinates UI state with database state
  *   - Handles conversation lifecycle and message branching
  *
@@ -52,9 +53,7 @@ const db = new LlamacppDatabase();
  * enabling conversation branching and alternative response paths. The conversation's
  * `currNode` tracks the currently active branch endpoint.
  */
-import { v4 as uuid } from 'uuid';
-
-export class DatabaseStore {
+export class DatabaseService {
 	/**
 	 * Adds a new message to the database.
 	 *

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import '../app.css';
 	import { page } from '$app/state';
 	import { ChatSidebar, DialogConversationTitleUpdate } from '$lib/components/app';
@@ -10,7 +11,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import { serverStore } from '$lib/stores/server.svelte';
 	import { config, settingsStore } from '$lib/stores/settings.svelte';
-	import { ModeWatcher } from 'mode-watcher';
+	import { setMode } from 'mode-watcher';
 	import { Toaster } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { chatStore, isInitialized as chatIsInitialized } from '$lib/stores/chat.svelte';
@@ -157,6 +158,14 @@
 		}
 	});
 
+	// MCP store auto-initializes via reinitialize() when config changes
+
+	// Apply saved theme once on mount (replaces <ModeWatcher /> component)
+	$effect(() => {
+		const theme = config().theme as 'light' | 'dark' | 'system' | undefined;
+		untrack(() => setMode(theme ?? 'system'));
+	});
+
 	// Monitor API key changes and redirect to error page if removed or changed when required
 	$effect(() => {
 		const currentConfig = config();
@@ -263,8 +272,6 @@
 		}
 	});
 </script>
-
-<ModeWatcher />
 
 <Toaster richColors />
 

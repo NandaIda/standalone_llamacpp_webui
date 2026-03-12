@@ -22,18 +22,28 @@
 
 	const currentConfig = config();
 
+	let userToggled = $state(false);
 	let isExpanded = $state(currentConfig.showThoughtInProgress);
 
+	// Auto-collapse only when streaming finishes and there's regular content
+	// Never override if user manually toggled
+	let prevIsStreaming = $state(isStreaming);
 	$effect(() => {
-		if (hasRegularContent && reasoningContent && currentConfig.showThoughtInProgress) {
+		if (prevIsStreaming && !isStreaming && hasRegularContent && reasoningContent && !userToggled) {
 			isExpanded = false;
 		}
+		prevIsStreaming = isStreaming;
 	});
+
+	function handleToggle() {
+		userToggled = true;
+		isExpanded = !isExpanded;
+	}
 </script>
 
-<Collapsible.Root bind:open={isExpanded} class="mb-6 {className}">
+<Collapsible.Root open={isExpanded} class="mb-6 {className}">
 	<Card class="gap-0 border-muted bg-muted/30 py-0">
-		<Collapsible.Trigger class="flex cursor-pointer items-center justify-between p-3">
+		<Collapsible.Trigger onclick={handleToggle} class="flex cursor-pointer items-center justify-between p-3">
 			<div class="flex items-center gap-2 text-muted-foreground">
 				<Brain class="h-4 w-4" />
 

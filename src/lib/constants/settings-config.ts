@@ -42,6 +42,7 @@ export const SETTING_CONFIG_DEFAULT: Record<string, string | number | boolean> =
 	reasoning_effort: 'medium',
 	max_context: -1,
 	custom: '', // custom json-stringified object
+	maxToolIterations: 10,
 	// experimental features
 	pyInterpreterEnabled: false,
 	enableContinueGeneration: false,
@@ -111,6 +112,8 @@ export const SETTING_CONFIG_INFO: Record<string, string> = {
 		'Enable the model selector in the chat input to choose the inference model. Sends the associated model field in API requests.',
 	pyInterpreterEnabled:
 		'Enable Python interpreter using Pyodide. Allows running Python code in markdown code blocks.',
+	maxToolIterations:
+		'Maximum number of tool call iterations in the agentic loop. The AI can call tools, get results, and call more tools up to this limit. Set lower to reduce API costs, higher for complex multi-step tasks.',
 	enableContinueGeneration:
 		'Enable "Continue" button for assistant messages. Currently works only with non-reasoning models.'
 };

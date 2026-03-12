@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ChatMessageThinkingBlock, MarkdownContent, ChatAttachmentsList } from '$lib/components/app';
+	import ChatMessageAgenticContent from './ChatMessageAgenticContent.svelte';
 	import { useProcessingState } from '$lib/hooks/use-processing-state.svelte';
 	import { isLoading } from '$lib/stores/chat.svelte';
 	import autoResizeTextarea from '$lib/utils/autoresize-textarea';
@@ -23,6 +24,7 @@
 	import { config } from '$lib/stores/settings.svelte';
 	import { modelName as serverModelName } from '$lib/stores/server.svelte';
 	import { copyToClipboard } from '$lib/utils/copy';
+	import { parseAgenticContent } from '$lib/utils/agentic';
 	import type { ApiChatCompletionToolCall } from '$lib/types/api';
 
 	interface Props {
@@ -104,6 +106,17 @@
 		}
 
 		return serverModel;
+	});
+
+	// Detect if message contains agentic sections (tool calls or reasoning markers)
+	const hasAgenticContent = $derived.by(() => {
+		if (!messageContent) return false;
+		// Check for agentic tool call markers or reasoning markers
+		return (
+			messageContent.includes('<<<AGENTIC_TOOL_CALL_START>>>') ||
+			messageContent.includes('<<<reasoning_content_start>>>') ||
+			messageContent.includes('<<<TOOL_NAME:')
+		);
 	});
 
 	function handleCopyModel() {
@@ -239,7 +252,14 @@
 			</div>
 		{/if}
 
-		{#if config().disableReasoningFormat}
+		{#if hasAgenticContent}
+			<ChatMessageAgenticContent
+				{message}
+				content={messageContent || ''}
+				isStreaming={!message.timestamp}
+				highlightTurns={false}
+			/>
+		{:else if config().disableReasoningFormat}
 			<pre class="raw-output">{messageContent || ''}</pre>
 		{:else}
 			<MarkdownContent content={messageContent || ''} />

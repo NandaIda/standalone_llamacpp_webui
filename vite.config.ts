@@ -120,7 +120,7 @@ export default defineConfig({
 						provider: 'playwright',
 						instances: [{ browser: 'chromium' }]
 					},
-					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
+					include: ['tests/client/**/*.svelte.{test,spec}.{js,ts}', 'src/**/*.svelte.{test,spec}.{js,ts}'],
 					exclude: ['src/lib/server/**'],
 					setupFiles: ['./vitest-setup-client.ts']
 				}
@@ -128,10 +128,10 @@ export default defineConfig({
 			{
 				extends: './vite.config.ts',
 				test: {
-					name: 'server',
+					name: 'unit',
 					environment: 'node',
-					include: ['src/**/*.{test,spec}.{js,ts}'],
-					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}']
+					include: ['tests/unit/**/*.{test,spec}.{js,ts}', 'src/**/*.{test,spec}.{js,ts}'],
+					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}', 'tests/client/**/*', 'tests/stories/**/*', 'tests/e2e/**/*']
 				}
 			},
 			{
@@ -144,7 +144,7 @@ export default defineConfig({
 						provider: 'playwright',
 						instances: [{ browser: 'chromium', headless: true }]
 					},
-					include: ['src/**/*.stories.{js,ts,svelte}'],
+					include: ['tests/stories/**/*.stories.{js,ts,svelte}', 'src/**/*.stories.{js,ts,svelte}'],
 					setupFiles: ['./.storybook/vitest.setup.ts']
 				},
 				plugins: [
@@ -152,6 +152,14 @@ export default defineConfig({
 						storybookScript: 'pnpm run storybook --no-open'
 					})
 				]
+			},
+			{
+				extends: './vite.config.ts',
+				test: {
+					name: 'e2e',
+					environment: 'node',
+					include: ['tests/e2e/**/*.{test,spec}.{js,ts}']
+				}
 			}
 		]
 	},
@@ -161,6 +169,10 @@ export default defineConfig({
 		headers: {
 			'Cross-Origin-Embedder-Policy': 'require-corp',
 			'Cross-Origin-Opener-Policy': 'same-origin'
+		},
+		proxy: {
+			'/props': 'http://localhost:8080',
+			'/cors-proxy': 'http://localhost:8080'
 		}
 	}
 });

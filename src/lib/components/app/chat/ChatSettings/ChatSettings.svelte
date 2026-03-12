@@ -10,12 +10,14 @@
 		ChevronLeft,
 		ChevronRight,
 		Database,
-		Info
+		Info,
+		Network
 	} from '@lucide/svelte';
 	import {
 		ChatSettingsFooter,
 		ChatSettingsImportExportTab,
-		ChatSettingsFields
+		ChatSettingsFields,
+		McpServersSettings
 	} from '$lib/components/app';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import {
@@ -195,11 +197,21 @@
 					type: 'checkbox'
 				},
 				{
+					key: 'maxToolIterations',
+					label: 'Max tool call turns',
+					type: 'input'
+				},
+				{
 					key: 'custom',
 					label: 'Custom JSON',
 					type: 'textarea'
 				}
 			]
+		},
+		{
+			title: 'MCP Servers',
+			icon: Network,
+			fields: []
 		},
 		{
 			title: 'About',
@@ -418,6 +430,8 @@
 
 				{#if currentSection.title === 'Import/Export'}
 					<ChatSettingsImportExportTab />
+				{:else if currentSection.title === 'MCP Servers'}
+					<McpServersSettings />
 				{:else if currentSection.title === 'About'}
 					<div class="space-y-6">
 						<div class="rounded-lg border border-border/50 bg-muted/30 p-6">

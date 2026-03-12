@@ -38,7 +38,7 @@ import type { SettingsChatServiceOptions } from '$lib/types/settings';
  * - **ChatStore**: Stateful orchestration and UI state management
  *   - Uses ChatService for all AI model communication
  *   - Manages conversation state, message history, and UI reactivity
- *   - Coordinates with DatabaseStore for persistence
+ *   - Coordinates with DatabaseService for persistence
  *   - Handles complex workflows like branching and regeneration
  *
  * **Key Responsibilities:**
@@ -73,6 +73,27 @@ export class ChatService {
 		const cleanContent = content.replace(thinkRegex, '').trim();
 
 		return { content: cleanContent, reasoning };
+	}
+
+	/**
+	 * Strips reasoning content from message to prevent context bloat
+	 * Removes <think> tags and any content wrapped in reasoning markers
+	 * @param content - The message content that may contain reasoning blocks
+	 * @returns Content with all reasoning blocks removed
+	 */
+	static stripReasoningContent(content: string): string {
+		if (!content) return content;
+
+		// Remove <think>...</think> blocks
+		let stripped = content.replace(/<think>([\s\S]*?)<\/think>/g, '');
+
+		// Remove reasoning marker blocks (e.g., <<<reasoning_content_start>>>...<<<reasoning_content_end>>>)
+		stripped = stripped.replace(/<<<reasoning_content_start>>>[\s\S]*?<<<reasoning_content_end>>>/g, '');
+
+		// Clean up any excess whitespace
+		stripped = stripped.trim();
+
+		return stripped;
 	}
 
 	/**
@@ -126,7 +147,9 @@ export class ChatService {
 			// Other parameters
 			samplers,
 			custom,
-			timings_per_token
+			timings_per_token,
+			tools,
+			tool_choice
 		} = options;
 
 		const currentConfig = config();
@@ -162,10 +185,12 @@ export class ChatService {
 		const processedMessages = this.injectSystemMessage(normalizedMessages);
 
 		const requestBody: ApiChatCompletionRequest = {
-			messages: processedMessages.map((msg: ApiChatMessageData) => ({
-				role: msg.role,
-				content: msg.content
-			})),
+			messages: processedMessages.map((msg: any) => {
+				const m: any = { role: msg.role, content: msg.content };
+				if (msg.tool_calls) m.tool_calls = msg.tool_calls;
+				if (msg.tool_call_id) m.tool_call_id = msg.tool_call_id;
+				return m;
+			}),
 			stream
 		};
 
@@ -219,6 +244,14 @@ export class ChatService {
 		}
 
 		if (timings_per_token !== undefined) requestBody.timings_per_token = timings_per_token;
+
+		// Inject MCP tools if available
+		if (tools && Array.isArray(tools) && tools.length > 0) {
+			requestBody.tools = tools;
+			if (tool_choice !== undefined) {
+				requestBody.tool_choice = tool_choice;
+			}
+		}
 
 		if (custom) {
 			try {
@@ -545,6 +578,11 @@ export class ChatService {
 							const content = parsed.choices[0]?.delta?.content;
 							// Support both OpenRouter format (reasoning) and OpenAI format (reasoning_content)
 							const reasoningContent = parsed.choices[0]?.delta?.reasoning || parsed.choices[0]?.delta?.reasoning_content;
+
+							// Debug: log first few chunks to diagnose missing content
+							if (!firstTokenTime) {
+								console.log('[Stream Debug] First chunk delta:', JSON.stringify(parsed.choices[0]?.delta));
+							}
 							const toolCalls = parsed.choices[0]?.delta?.tool_calls;
 							const timings = parsed.timings;
 							const promptProgress = parsed.prompt_progress;
@@ -647,6 +685,23 @@ export class ChatService {
 			if (abortSignal?.aborted) return;
 
 			if (streamFinished) {
+				console.log('[Stream Debug] Stream finished. aggregatedContent length:', aggregatedContent.length, 'fullReasoningContent length:', fullReasoningContent.length, 'thinkBuffer length:', thinkBuffer.length, 'insideThinkTag:', insideThinkTag);
+				console.log('[Stream Debug] aggregatedContent:', aggregatedContent.substring(0, 200));
+				console.log('[Stream Debug] thinkBuffer:', thinkBuffer.substring(0, 200));
+				// Flush any remaining content stuck in thinkBuffer
+				if (thinkBuffer) {
+					if (insideThinkTag) {
+						// Think tag never closed — flush as reasoning
+						onReasoningChunk?.(thinkBuffer);
+						fullReasoningContent += thinkBuffer;
+					} else {
+						// Regular content that wasn't flushed
+						onChunk?.(thinkBuffer);
+						aggregatedContent += thinkBuffer;
+					}
+					thinkBuffer = '';
+				}
+
 				finalizeOpenToolCallBatch();
 
 				const finalToolCalls =
@@ -1009,28 +1064,25 @@ export class ChatService {
 	 */
 	private injectSystemMessage(messages: ApiChatMessageData[]): ApiChatMessageData[] {
 		const currentConfig = config();
-		const systemMessage = currentConfig.systemMessage?.toString().trim();
+		const systemMessage = currentConfig.systemMessage?.toString().trim() || '';
 
-		if (!systemMessage) {
-			return messages;
-		}
+		const now = new Date();
+		const dateTimeInfo = `\n\n[Current date and time: ${now.toLocaleString()} | Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}]`;
+
+		const fullSystemMessage = (systemMessage + dateTimeInfo).trim();
 
 		if (messages.length > 0 && messages[0].role === 'system') {
-			if (messages[0].content !== systemMessage) {
-				const updatedMessages = [...messages];
-				updatedMessages[0] = {
-					role: 'system',
-					content: systemMessage
-				};
-				return updatedMessages;
-			}
-
-			return messages;
+			const updatedMessages = [...messages];
+			updatedMessages[0] = {
+				role: 'system',
+				content: fullSystemMessage
+			};
+			return updatedMessages;
 		}
 
 		const systemMsg: ApiChatMessageData = {
 			role: 'system',
-			content: systemMessage
+			content: fullSystemMessage
 		};
 
 		return [systemMsg, ...messages];

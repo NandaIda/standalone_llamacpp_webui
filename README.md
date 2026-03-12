@@ -36,10 +36,16 @@ This is a standalone web interface designed to work with OpenAI-compatible APIs.
 
 - OpenAI API compatibility
 - Works with llama-server
-- Supports multiple LLM providers
+- Supports multiple LLM providers (Vultr, DeepInfra, OpenRouter, etc.)
 - Conversation management and branching
 - File attachments (images, PDFs, audio, text)
+- **MCP (Model Context Protocol) integration** — connect to MCP servers for tool calling (with API key/header auth support)
+- **Agentic tool execution loop** — models can call tools, get results, retry on errors, and call more tools (configurable max turns)
+- **Built-in tools** — calculator and date math work without any MCP server
+- **Reasoning model support** — collapsible `<think>` blocks for DeepSeek-R1, QwQ, etc. with stacked reasoning across tool iterations
+- **Auto date/time injection** — AI always knows the user's current local date, time, and timezone
 - Available as Android APK
+- Firefox AI Chatbots integration
 
 ## Screenshots
 
@@ -120,6 +126,81 @@ Configure your API endpoint in the app settings:
 - API Base URL: Your OpenAI-compatible endpoint
 - API Key: Your authentication key
 - Model: Your model identifier
+
+### Developer Settings
+
+- **Max tool call turns**: Maximum iterations for the agentic tool loop (default: 10)
+- **Enable model selector**: Choose inference model from the chat input
+- **Show tool call labels**: Display tool call metadata on messages
+- **Show raw LLM output**: Disable reasoning format parsing
+- **Custom JSON**: Additional parameters to include in API requests
+
+## MCP (Model Context Protocol) Integration
+
+This app supports connecting to MCP servers for tool calling. Models can use tools like web search, file access, and more through MCP.
+
+### Setup
+
+1. Go to **Settings → MCP Servers** tab
+2. Click **+ Add New Server**
+3. Enter the MCP server URL (e.g., `http://localhost:3100/sse`)
+4. The server will auto-connect and discover available tools
+
+### Supported Transports
+
+| Transport | URL Pattern | Example |
+|-----------|------------|---------|
+| SSE | URLs ending in `/sse` | `http://host:3100/sse` |
+| StreamableHTTP | Other HTTP URLs | `http://host:3100/mcp` |
+| WebSocket | `ws://` or `wss://` | `ws://host:3100` |
+
+### CORS Proxy for MCP Servers
+
+Since this is a browser app, MCP servers need CORS headers. If your MCP server doesn't support CORS, run a proxy:
+
+```bash
+# Simple Node.js CORS proxy (save as cors-proxy.mjs)
+import http from "http";
+const TARGET = "http://127.0.0.1:8000";
+const server = http.createServer((req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
+  const url = new URL(req.url, TARGET);
+  const proxy = http.request({ hostname: url.hostname, port: url.port,
+    path: url.pathname + url.search, method: req.method,
+    headers: { ...req.headers, host: url.host }
+  }, (proxyRes) => {
+    const headers = { ...proxyRes.headers, "access-control-allow-origin": "*" };
+    res.writeHead(proxyRes.statusCode, headers);
+    proxyRes.pipe(res);
+  });
+  req.pipe(proxy);
+});
+server.listen(3100, () => console.log("CORS proxy on :3100"));
+```
+
+Then use `http://your-host:3100/sse` as the MCP server URL.
+
+### Built-in Tools
+
+These tools work without any MCP server — they execute locally in the browser:
+
+| Tool | Description |
+|------|-------------|
+| `builtin_calculator` | Math expressions: `2 + 3 * 4`, `sqrt(144)`, `sin(PI/2)`, `max(5, 10, 3)` |
+| `builtin_date_math` | Date calculations: current time, add/subtract durations, diff between dates |
+
+### How Tool Calling Works
+
+1. When you send a message, the app injects built-in tools + MCP tool definitions into the API request
+2. If the model decides to call a tool, the app routes it: built-in tools run locally, MCP tools execute via the MCP server
+3. Tool results are sent back to the model automatically
+4. If the model calls more tools (e.g., to retry after an error or perform multi-step tasks), the loop continues
+5. Reasoning and tool call details accumulate in a collapsible thinking bubble
+6. The loop runs up to **Max tool call turns** (configurable in Settings → Developer, default: 10)
+7. The model generates a final response after all tool calls complete
 
 ## Credits
 

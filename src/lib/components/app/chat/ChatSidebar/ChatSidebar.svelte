@@ -14,7 +14,7 @@
 		deleteMultipleConversations,
 		updateConversationName
 	} from '$lib/stores/chat.svelte';
-	import { DatabaseStore } from '$lib/stores/database';
+	import { DatabaseService } from '$lib/services/database.service';
 	import { chatService } from '$lib/services';
 	import ChatSidebarActions from './ChatSidebarActions.svelte';
 
@@ -43,7 +43,7 @@
 
 		for (const conv of allConversations) {
 			try {
-				const messages = await DatabaseStore.getConversationMessages(conv.id);
+				const messages = await DatabaseService.getConversationMessages(conv.id);
 				const hasImageMessages = messages.some(
 					(msg) =>
 						msg.role === 'assistant' &&
@@ -70,7 +70,7 @@
 
 		for (const conv of allConversations) {
 			try {
-				const messages = await DatabaseStore.getConversationMessages(conv.id);
+				const messages = await DatabaseService.getConversationMessages(conv.id);
 				conversationMessagesCache.set(conv.id, messages);
 			} catch (error) {
 				console.error(`Failed to load messages for conversation ${conv.id}:`, error);
@@ -179,7 +179,7 @@
 			generatedTitle = 'Generating...';
 
 			// Get all messages from the conversation
-			const messages = await DatabaseStore.getConversationMessages(id);
+			const messages = await DatabaseService.getConversationMessages(id);
 
 			// Filter to only user and assistant messages (exclude root messages)
 			const chatMessages = messages.filter(

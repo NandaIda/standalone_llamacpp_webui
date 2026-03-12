@@ -146,6 +146,24 @@ export enum MimeTypeImage {
 	SVG = 'image/svg+xml'
 }
 
+// MIME type prefix enums
+export enum MimeTypePrefix {
+	IMAGE = 'image/',
+	TEXT = 'text'
+}
+
+export enum MimeTypeIncludes {
+	JSON = 'json',
+	JAVASCRIPT = 'javascript',
+	TYPESCRIPT = 'typescript'
+}
+
+// URI patterns for content detection
+export enum UriPattern {
+	DATABASE_KEYWORD = 'database',
+	DATABASE_SCHEME = 'db://'
+}
+
 export enum MimeTypeText {
 	PLAIN = 'text/plain',
 	MARKDOWN = 'text/markdown',
