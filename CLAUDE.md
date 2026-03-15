@@ -133,3 +133,11 @@ Browser-based MCP connections require CORS headers. For servers without CORS:
 - **Svelte:** Pinned to 5.36.x (5.38+ has `blockers` API incompatibility with bits-ui)
 - **bits-ui:** Pinned to 2.14.4
 - **mode-watcher:** 1.1.0 — `<ModeWatcher />` component replaced with `setMode()` call due to Svelte 5 incompatibility
+
+## Android Signing
+
+Use the shared keystore at `/home/suananda/Program_made/ANDROID_sign/release-key.jks` for all release APK signing.
+
+- **Alias:** `nandaida-key`
+- **Zipalign:** `/home/suananda/Android/Sdk/build-tools/36.1.0/zipalign`
+- See `/home/suananda/Program_made/ANDROID_sign/README.md` for full commands.
