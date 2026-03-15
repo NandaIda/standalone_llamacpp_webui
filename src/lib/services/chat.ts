@@ -657,6 +657,7 @@ export class ChatService {
 									processedContent = '';
 								} else {
 									// Regular content, not in think tags
+									thinkBuffer = '';
 									aggregatedContent += content;
 									if (!abortSignal?.aborted) {
 										onChunk?.(content);
