@@ -189,7 +189,7 @@
 	role="group"
 	aria-label="Assistant message with actions"
 >
-	{#if thinkingContent}
+	{#if thinkingContent && !hasAgenticContent}
 		<ChatMessageThinkingBlock
 			reasoningContent={thinkingContent}
 			isStreaming={!message.timestamp}

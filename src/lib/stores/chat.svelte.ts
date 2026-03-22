@@ -635,10 +635,27 @@ class ChatStore {
 					let currentContent = updateData.content;
 					let accumulatedThinking = updateData.thinking || '';
 					let allToolCallsJson = currentToolCalls || '';
+					// Build agentic-tagged content for multi-bubble display
+					let accumulatedAgenticContent = '';
 					let conversationHistory = [
 						...allMessages.map((m: any) => ({ role: m.role, content: m.content }))
 					];
 					let iteration = 0;
+
+					// Helper to format tool call using agentic tags
+					const formatAgenticToolCall = (name: string, args: string, result: string) => {
+						return `<<<AGENTIC_TOOL_CALL_START>>>\n<<<TOOL_NAME:${name}>>>\n<<<TOOL_ARGS_START>>>${args}<<<TOOL_ARGS_END>>>\n${result}\n<<<AGENTIC_TOOL_CALL_END>>>`;
+					};
+
+					const formatAgenticReasoning = (content: string) => {
+						return `<<<reasoning_content_start>>>${content}<<<reasoning_content_end>>>`;
+					};
+
+					// Truncate tool result for conversation history to save LLM context
+					const truncateForHistory = (text: string, max = 4000) => {
+						if (text.length <= max) return text;
+						return text.substring(0, max) + '\n... [truncated, ' + text.length + ' chars total]';
+					};
 
 					while (currentToolCalls && allTools.length > 0 && iteration < MAX_TOOL_ITERATIONS) {
 						iteration++;
@@ -649,6 +666,11 @@ class ChatStore {
 							if (!Array.isArray(parsedToolCalls) || parsedToolCalls.length === 0) break;
 
 							console.log('[Tools] Executing:', parsedToolCalls.map((tc: any) => tc.function?.name));
+
+							// Add the LLM's text content from this iteration to agentic content
+							if (currentContent && currentContent.trim()) {
+								accumulatedAgenticContent += (accumulatedAgenticContent ? '\n\n' : '') + currentContent.trim();
+							}
 
 							// Execute each tool call
 							const toolResults: Array<{ tool_call_id: string; role: string; content: string }> = [];
@@ -692,17 +714,33 @@ class ChatStore {
 										content: resultText
 									});
 									console.log('[Tools] Tool result for', tc.function.name, ':', resultText.substring(0, 200));
+
+									// Add to agentic content as tagged tool call block
+									const toolResultPreview = resultText.length > 2000
+										? resultText.substring(0, 2000) + '\n... [truncated]'
+										: resultText;
+									accumulatedAgenticContent += '\n' + formatAgenticToolCall(
+										tc.function.name,
+										tc.function.arguments || '{}',
+										toolResultPreview
+									);
 								} catch (toolError) {
 									console.error('[Tools] Tool execution error:', toolError);
+									const errorMsg = `Error: ${toolError instanceof Error ? toolError.message : String(toolError)}`;
 									toolResults.push({
 										tool_call_id: tc.id,
 										role: 'tool',
-										content: `Error: ${toolError instanceof Error ? toolError.message : String(toolError)}`
+										content: errorMsg
 									});
+									accumulatedAgenticContent += '\n' + formatAgenticToolCall(
+										tc.function.name,
+										tc.function.arguments || '{}',
+										errorMsg
+									);
 								}
 							}
 
-							// Add tool call details to accumulated thinking
+							// Keep thinking for backward compat (used by ThinkingBlock)
 							const toolCallSummary = parsedToolCalls.map((tc: any) => {
 								let args = tc.function.arguments;
 								try { args = JSON.stringify(JSON.parse(args), null, 2); } catch { /* keep as-is */ }
@@ -717,21 +755,26 @@ class ChatStore {
 								toolCallSummary + '\n\n' + toolResultSummary;
 
 							// Append assistant + tool results to conversation history
+							// Truncate large tool results to save LLM context
+							const truncatedToolResults = toolResults.map(tr => ({
+								...tr,
+								content: truncateForHistory(tr.content)
+							}));
 							conversationHistory.push({
 								role: 'assistant' as const,
 								content: currentContent || null,
 								tool_calls: parsedToolCalls
 							} as any);
-							conversationHistory.push(...toolResults as any);
+							conversationHistory.push(...truncatedToolResults as any);
 
-							// Update UI — show progress
+							// Update UI — show agentic content with progress indicator
 							const messageIndex2 = this.findMessageIndex(assistantMessage.id);
 							this.updateMessageAtIndex(messageIndex2, {
-								content: `*Executing tool calls (step ${iteration})...*`,
+								content: accumulatedAgenticContent + `\n\n*Executing step ${iteration}...*`,
 								thinking: accumulatedThinking
 							});
 
-							// Stream follow-up — accumulate into existing thinking, don't reset
+							// Stream follow-up
 							streamedContent = '';
 							streamedReasoningContent = '';
 							streamedToolCallContent = '';
@@ -749,12 +792,19 @@ class ChatStore {
 										streamedContent += chunk;
 										this.setConversationStreaming(assistantMessage.convId, streamedContent, assistantMessage.id);
 										const idx = this.findMessageIndex(assistantMessage.id);
-										this.updateMessageAtIndex(idx, { content: streamedContent });
+										// Show accumulated agentic content + streaming new content
+										this.updateMessageAtIndex(idx, {
+											content: accumulatedAgenticContent + '\n\n' + streamedContent
+										});
 									},
 									onReasoningChunk: (rc: string) => {
 										streamedReasoningContent += rc;
 										const idx = this.findMessageIndex(assistantMessage.id);
-										this.updateMessageAtIndex(idx, { thinking: accumulatedThinking + '\n\n---\n\n' + streamedReasoningContent });
+										// Add streaming reasoning as a pending reasoning block
+										this.updateMessageAtIndex(idx, {
+											content: accumulatedAgenticContent + '\n\n' + '<<<reasoning_content_start>>>' + streamedReasoningContent,
+											thinking: accumulatedThinking + '\n\n---\n\n' + streamedReasoningContent
+										});
 									},
 									onToolCallChunk: (chunk: string) => {
 										streamedToolCallContent = chunk;
@@ -763,17 +813,21 @@ class ChatStore {
 										slotsService.stopStreaming();
 										followUpToolCalls = tc || streamedToolCallContent;
 
-										// Stack reasoning into accumulated thinking
+										// Add completed reasoning to agentic content
 										const iterationThinking = rc || streamedReasoningContent;
 										if (iterationThinking && iterationThinking.trim()) {
 											accumulatedThinking += (accumulatedThinking ? '\n\n---\n\n' : '') + iterationThinking;
+											accumulatedAgenticContent += '\n\n' + formatAgenticReasoning(iterationThinking);
 										}
 
 										currentContent = fc || streamedContent;
 
-										// Save current state
+										// Save current state with agentic content
+										const displayContent = followUpToolCalls
+											? accumulatedAgenticContent  // more tool calls coming, don't add final text yet
+											: accumulatedAgenticContent + (currentContent?.trim() ? '\n\n' + currentContent.trim() : '');
 										const finalData = {
-											content: currentContent,
+											content: displayContent,
 											thinking: accumulatedThinking,
 											toolCalls: followUpToolCalls || allToolCallsJson
 										};
@@ -789,7 +843,7 @@ class ChatStore {
 											`**Tool result:**\n${tr.content}`
 										).join('\n\n');
 										const finalData = {
-											content: fallbackContent || `Error: ${err.message}`,
+											content: accumulatedAgenticContent + '\n\n' + (fallbackContent || `Error: ${err.message}`),
 											thinking: accumulatedThinking,
 											toolCalls: allToolCallsJson
 										};

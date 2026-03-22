@@ -33,7 +33,7 @@ This is a standalone, client-side WebUI designed to interact with OpenAI-compati
 - **`SlotsService` (`slots.ts`):** Monitors server slot usage/capacity (specific to `llama.cpp` server).
 
 ### State Management (`src/lib/stores/`)
-- **`ChatStore` (`chat.svelte.ts`):** The central store for UI state. Orchestrates message sending, agentic tool execution loop (send → model calls tool → execute → send results back → model may call more tools → loop up to `maxToolIterations`), regeneration, and manages the active conversation. Reasoning and tool call details accumulate in the thinking bubble across iterations.
+- **`ChatStore` (`chat.svelte.ts`):** The central store for UI state. Orchestrates message sending, agentic tool execution loop (send → model calls tool → execute → send results back → model may call more tools → loop up to `maxToolIterations`), regeneration, and manages the active conversation. Each agentic iteration renders as separate bubbles (reasoning, text, tool calls) for clear multi-step visibility.
 - **`ConversationsStore` (`conversations.svelte.ts`):** Manages conversation lifecycle — CRUD, title updates, branching, navigation, import/export. Extracted from ChatStore.
 - **`MCPStore` (`mcp.svelte.ts`):** MCP server state orchestration. Manages connections, health checks, tool definitions, and tool execution. Provides `getToolDefinitionsForLLM()` for injecting tools into API requests and `executeTool()` for running tools.
 - **`MCPResourcesStore` (`mcp-resources.svelte.ts`):** MCP resource caching.

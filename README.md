@@ -42,7 +42,7 @@ This is a standalone web interface designed to work with OpenAI-compatible APIs.
 - **MCP (Model Context Protocol) integration** — connect to MCP servers for tool calling (with API key/header auth support)
 - **Agentic tool execution loop** — models can call tools, get results, retry on errors, and call more tools (configurable max turns)
 - **Built-in tools** — calculator and date math work without any MCP server
-- **Reasoning model support** — collapsible `<think>` blocks for DeepSeek-R1, QwQ, etc. with stacked reasoning across tool iterations
+- **Reasoning model support** — collapsible `<think>` blocks for DeepSeek-R1, QwQ, etc. with multi-bubble agentic display (reasoning, content, tool calls shown as separate blocks per iteration)
 - **Auto date/time injection** — AI always knows the user's current local date, time, and timezone
 - Available as Android APK
 - Firefox AI Chatbots integration
@@ -198,7 +198,7 @@ These tools work without any MCP server — they execute locally in the browser:
 2. If the model decides to call a tool, the app routes it: built-in tools run locally, MCP tools execute via the MCP server
 3. Tool results are sent back to the model automatically
 4. If the model calls more tools (e.g., to retry after an error or perform multi-step tasks), the loop continues
-5. Reasoning and tool call details accumulate in a collapsible thinking bubble
+5. Each step (reasoning, text, tool calls) renders as separate collapsible bubbles
 6. The loop runs up to **Max tool call turns** (configurable in Settings → Developer, default: 10)
 7. The model generates a final response after all tool calls complete
 
