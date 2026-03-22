@@ -661,6 +661,11 @@ class ChatStore {
 						iteration++;
 						console.log(`[Tools] Iteration ${iteration}/${MAX_TOOL_ITERATIONS}`);
 
+						// On first iteration, seed with initial reasoning so it's not lost
+						if (iteration === 1 && accumulatedThinking.trim()) {
+							accumulatedAgenticContent = formatAgenticReasoning(accumulatedThinking.trim());
+						}
+
 						try {
 							const parsedToolCalls = JSON.parse(currentToolCalls);
 							if (!Array.isArray(parsedToolCalls) || parsedToolCalls.length === 0) break;
