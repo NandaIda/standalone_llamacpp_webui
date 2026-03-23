@@ -1063,12 +1063,25 @@ export class ChatService {
 	 * @returns Array of messages with system message injected at the beginning if configured
 	 * @private
 	 */
+	private cachedDateTimeInfo: string | null = null;
+
+	/**
+	 * Resets the cached date/time info so the next request rebuilds it.
+	 * Call this when starting a new conversation.
+	 */
+	resetDateTimeCache(): void {
+		this.cachedDateTimeInfo = null;
+	}
+
 	private injectSystemMessage(messages: ApiChatMessageData[]): ApiChatMessageData[] {
 		const currentConfig = config();
 		const systemMessage = currentConfig.systemMessage?.toString().trim() || '';
 
-		const now = new Date();
-		const dateTimeInfo = `\n\n[Current date and time: ${now.toLocaleString()} | Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}]`;
+		if (!this.cachedDateTimeInfo) {
+			const now = new Date();
+			this.cachedDateTimeInfo = `\n\n[Current date and time: ${now.toLocaleString()} | Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}]`;
+		}
+		const dateTimeInfo = this.cachedDateTimeInfo;
 
 		const fullSystemMessage = (systemMessage + dateTimeInfo).trim();
 

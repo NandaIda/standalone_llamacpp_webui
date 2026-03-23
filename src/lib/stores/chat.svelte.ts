@@ -134,6 +134,7 @@ class ChatStore {
 		}
 
 		slotsService.setActiveConversation(convId);
+		chatService.resetDateTimeCache();
 
 		const isConvLoading = this.isConversationLoading(convId);
 		this.isLoading = isConvLoading;
@@ -159,6 +160,7 @@ class ChatStore {
 			}
 
 			slotsService.setActiveConversation(convId);
+			chatService.resetDateTimeCache();
 
 			const isConvLoading = this.isConversationLoading(convId);
 			this.isLoading = isConvLoading;
