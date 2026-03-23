@@ -513,14 +513,15 @@ class ChatStore {
 		slotsService.startStreaming();
 		slotsService.setActiveConversation(assistantMessage.convId);
 
-		// Ensure MCP servers are connected and get tool definitions
-		const hasServers = mcpStore.hasAvailableServers();
-		console.log('[MCP] hasAvailableServers:', hasServers, 'connections:', mcpStore.connectedServerCount, 'isInitialized:', mcpStore.isInitialized);
-		if (hasServers) {
-			const initResult = await mcpStore.ensureInitialized();
-			console.log('[MCP] ensureInitialized result:', initResult, 'connections after:', mcpStore.connectedServerCount);
-		}
-		const mcpTools = mcpStore.getToolDefinitionsForLLM();
+		// Ensure MCP servers are connected (or shut down if all disabled)
+		await mcpStore.ensureInitialized();
+		// Build set of servers disabled per-chat
+		const perChatDisabled = new Set(
+			mcpStore.getServers()
+				.filter((s) => !conversationsStore.isMcpServerEnabledForChat(s.id))
+				.map((s) => s.id)
+		);
+		const mcpTools = mcpStore.getToolDefinitionsForLLM(perChatDisabled);
 		const builtinTools = getBuiltinToolDefinitions();
 		const allTools = [...builtinTools, ...mcpTools];
 		console.log('[Tools] Built-in:', builtinTools.length, 'MCP:', mcpTools.length, 'Total:', allTools.length);

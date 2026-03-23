@@ -595,10 +595,28 @@ class ConversationsStore {
 	 * MCP server per-conversation overrides.
 	 * Stored as a map of serverId → enabled for the active conversation.
 	 */
-	private mcpServerOverrides = $state<Record<string, boolean>>({});
+	private mcpServerOverrides = $state<Record<string, boolean>>(
+		this.loadMcpServerOverrides()
+	);
+
+	private loadMcpServerOverrides(): Record<string, boolean> {
+		if (!browser) return {};
+		try {
+			const stored = localStorage.getItem('mcpServerOverrides');
+			return stored ? JSON.parse(stored) : {};
+		} catch {
+			return {};
+		}
+	}
+
+	private saveMcpServerOverrides(): void {
+		if (!browser) return;
+		localStorage.setItem('mcpServerOverrides', JSON.stringify(this.mcpServerOverrides));
+	}
 
 	setMcpServerOverride(serverId: string, enabled: boolean): void {
 		this.mcpServerOverrides[serverId] = enabled;
+		this.saveMcpServerOverrides();
 	}
 
 	isMcpServerEnabledForChat(serverId: string): boolean {

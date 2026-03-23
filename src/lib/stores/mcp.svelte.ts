@@ -678,6 +678,27 @@ class MCPStore {
 				servers.map((server) => (server.id === id ? { ...server, ...updates } : server))
 			)
 		);
+
+		// Disconnect server when disabled so its tools are removed immediately
+		if (updates.enabled === false) {
+			// Find the connection key — it may differ from settings id due to #generateServerId
+			const serverIndex = servers.findIndex((s) => s.id === id);
+			const connectionKey = this.#generateServerId(id, serverIndex >= 0 ? serverIndex : 0);
+			const connection = this.connections.get(connectionKey);
+			if (connection) {
+				MCPService.disconnect(connection).catch(console.warn);
+				for (const tool of connection.tools) {
+					this.toolsIndex.delete(tool.name);
+				}
+				this.connections.delete(connectionKey);
+				this.serverConfigs.delete(connectionKey);
+				this.reconnectingServers.delete(connectionKey);
+				this.updateState({
+					toolCount: this.toolsIndex.size,
+					connectedServers: Array.from(this.connections.keys())
+				});
+			}
+		}
 	}
 
 	removeServer(id: string): void {
@@ -1079,10 +1100,20 @@ class MCPStore {
 		}
 	}
 
-	getToolDefinitionsForLLM(): OpenAIToolDefinition[] {
+	getToolDefinitionsForLLM(perChatDisabled?: Set<string>): OpenAIToolDefinition[] {
 		const tools: OpenAIToolDefinition[] = [];
 
-		for (const connection of this.connections.values()) {
+		// Only include tools from servers that are enabled in settings and not disabled per-chat
+		const servers = this.getServers();
+		const enabledServerIds = new Set(
+			servers
+				.map((s, index) => ({ connId: this.#generateServerId(s.id, index), enabled: s.enabled && !(perChatDisabled?.has(s.id)) }))
+				.filter((s) => s.enabled)
+				.map((s) => s.connId)
+		);
+
+		for (const [serverId, connection] of this.connections.entries()) {
+			if (!enabledServerIds.has(serverId)) continue;
 			for (const tool of connection.tools) {
 				const rawSchema = (tool.inputSchema as Record<string, unknown>) ?? {
 					type: JsonSchemaType.OBJECT,
