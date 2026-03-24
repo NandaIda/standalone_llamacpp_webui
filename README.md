@@ -4,7 +4,7 @@ Modified from llama.cpp
 
 All credit goes to the llama.cpp team and contributors.
 
-**Live Demo:** https://standalone-llamacpp-webui.vercel.app/
+**Live Demo:** https://aichat.duanleks.space/
 
 <details>
 <summary><strong>Live Demo: All data (API keys, chat history, parameters) is stored in your browser only - safe client-side storage, no server storage.</strong></summary>
@@ -18,7 +18,7 @@ When using the live demo (or any deployed version), all your data is stored **lo
 - **Settings & Parameters**: Stored in your browser's localStorage
 
 **Important:**
-- ✅ **No server storage**: Your data never reaches Vercel or any server
+- ✅ **No server storage**: Your data never reaches any server
 - ✅ **Client-side only**: Everything stays on your device
 - ✅ **Privacy**: Each user's data is isolated to their own browser
 - ⚠️ **Browser access**: Anyone with access to your browser can view this data
@@ -41,13 +41,18 @@ This is a standalone web interface designed to work with OpenAI-compatible APIs.
 - File attachments (images, PDFs, audio, text)
 - **MCP (Model Context Protocol) integration** — connect to MCP servers for tool calling (with API key/header auth support)
 - **Agentic tool execution loop** — models can call tools, get results, retry on errors, and call more tools (configurable max turns)
+- **Perplexity-style collapsed steps** — agentic steps (reasoning, tool calls) are collapsed into a single "Completed N steps" dropdown
 - **Built-in tools** — calculator and date math work without any MCP server
-- **Reasoning model support** — collapsible `<think>` blocks for DeepSeek-R1, QwQ, etc. with multi-bubble agentic display (reasoning, content, tool calls shown as separate blocks per iteration)
+- **Reasoning model support** — collapsible `<think>` blocks for DeepSeek-R1, QwQ, etc.
+- **Search mode** — use as a Firefox search engine with automatic web search system prompt
 - **Auto date/time injection** — AI always knows the user's current local date, time, and timezone
 - Available as Android APK
 - Firefox AI Chatbots integration
 
 ## Screenshots
+
+![Search Mode](Screenshot/Screenshot_2026-03-24_15-53-29.png)
+*Perplexity-style search with agentic web search, collapsed steps, and cited results*
 
 ![Web View](Screenshot/Screenshot_2025-12-02_13-51-13.png)
 *Web View and read pdf as images*
@@ -61,8 +66,8 @@ This is a standalone web interface designed to work with OpenAI-compatible APIs.
 ![Image Generation](Screenshot/Screenshot_20251202_135501.jpg)
 *AI image generation feature*
 
-![Chat Interface](Screenshot/Screenshot_2025-12-02_13-48-54.png)
-*Compitable with AI chatbots in Firefox*
+![Chat Interface](Screenshot/Screenshot_2026-03-24_15-58-14.png)
+*Compatible with AI chatbots in Firefox — Summarize page with agentic search*
 
 ## Platform Support
 
@@ -98,27 +103,40 @@ npm run cap:open    # Open in Android Studio
 npm run cap:run     # Build, sync, and run on device
 ```
 
-## Firefox AI Chatbots Integration
+## Firefox Integration
 
-This application can be integrated with Firefox's built-in AI Chatbots feature. We use **port 8000** instead of the default 8080 to avoid Firefox's limitations.
+### As a Search Engine (Perplexity-style)
 
-### Why Port 8000?
+You can use this app directly as a search engine in Firefox — queries go straight to the AI with an agentic web search system prompt. This works with the live demo at `aichat.duanleks.space` or any deployed instance.
 
-Firefox has a fixed maximum length limit of **8192 characters** when using `localhost:8080`. By using a different port, you can bypass this limitation.
+1. Go to `about:config` in Firefox
+2. Set:
+   - `browser.ml.chat.hideLocalhost` = `false`
+   - `browser.ml.chat.provider` = `https://aichat.duanleks.space`
 
-### Setup Instructions
+Now when you type a query using the AI chatbot feature, it opens the app with your query, creates a conversation, and the model automatically searches the web and provides cited answers — like Perplexity.
 
-1. Start the development server, will automatically open port 8000:
+The URL follows the pattern: `https://aichat.duanleks.space/#/search/your-query-here-a1b2c3d4`
+
+### As AI Chatbots Provider
+
+For general chat (without the search system prompt), configure Firefox to use the app as an AI Chatbot provider:
+
+1. Go to `about:config` in Firefox
+2. Set:
+   - `browser.ml.chat.hideLocalhost` = `false`
+   - `browser.ml.chat.provider` = `https://aichat.duanleks.space`
+   - `browser.ml.chat.maxLength` = `1000000`
+
+### Using with localhost
+
+If running locally, use **port 8000** instead of the default 8080 to avoid Firefox's 8192 character limit on `localhost:8080`:
+
 ```bash
 npm run dev
 ```
 
-2. Configure Firefox by going to `about:config` and setting:
-   - `browser.ml.chat.hideLocalhost` = `false` (required to use localhost in AI chatbots)
-   - `browser.ml.chat.provider` = `http://localhost:8000`
-   - `browser.ml.chat.maxLength` = `1000000`
-
-With this configuration, the "Summarize Page" command and other AI features will no longer be limited by the 8192 character restriction.
+Then set `browser.ml.chat.provider` = `http://localhost:8000`
 
 ## Configuration
 
@@ -198,9 +216,20 @@ These tools work without any MCP server — they execute locally in the browser:
 2. If the model decides to call a tool, the app routes it: built-in tools run locally, MCP tools execute via the MCP server
 3. Tool results are sent back to the model automatically
 4. If the model calls more tools (e.g., to retry after an error or perform multi-step tasks), the loop continues
-5. Each step (reasoning, text, tool calls) renders as separate collapsible bubbles
+5. All agentic steps are collapsed into a "Completed N steps" dropdown (expandable to see details)
 6. The loop runs up to **Max tool call turns** (configurable in Settings → Developer, default: 10)
 7. The model generates a final response after all tool calls complete
+
+## Search Mode
+
+The `/search` route turns the app into a Perplexity-like search engine:
+
+- **Entry:** `/#/search/your-query` — automatically creates a conversation and sends the query
+- **System prompt:** A special search-focused system prompt is injected that forces the model to always use web search tools, fetch full pages for details, and cite sources inline
+- **URL format:** After sending, the URL updates to `/#/search/your-query-<shortid>` — bookmarkable and revisitable
+- **Follow-up messages** in the same search conversation continue using the search system prompt
+
+This works best when connected to an MCP server that provides `web_search` and `fetch_page` tools.
 
 ## Credits
 
