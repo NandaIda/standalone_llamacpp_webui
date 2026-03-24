@@ -25,7 +25,7 @@ This is a standalone, client-side WebUI designed to interact with OpenAI-compati
 ## Architecture
 
 ### Core Services (`src/lib/services/`)
-- **`ChatService` (`chat.ts`):** Stateless API layer. Handles HTTP requests, streaming responses, parsing `<think>` tags (reasoning models), tool call parsing, and formatting messages for the API. Supports `tools` and `tool_choice` parameters for MCP integration. Automatically injects current date/time and timezone into system messages.
+- **`ChatService` (`chat.ts`):** Stateless API layer. Handles HTTP requests, streaming responses, parsing `<think>` tags (reasoning models), tool call parsing, and formatting messages for the API. Supports `tools` and `tool_choice` parameters for MCP integration. Automatically injects current date/time and timezone into system messages. Has a `systemPromptOverride` field that, when set, replaces the global system message from settings — used by the search route to inject a search-focused system prompt.
 - **`MCPService` (`mcp.service.ts`):** MCP protocol client. Handles WebSocket, SSE, and StreamableHTTP transports. Manages server connections, tool discovery, and tool execution. Auto-detects SSE endpoints by URL path (`/sse`).
 - **`BuiltinToolsService` (`builtin-tools.service.ts`):** Provides browser-local tools (calculator, date math) that work without any MCP server. Tools are prefixed with `builtin_` and executed locally.
 - **`DatabaseService` (`database.service.ts`):** Encapsulates all Dexie.js interactions. Manages persistence for conversations and messages.
@@ -33,7 +33,7 @@ This is a standalone, client-side WebUI designed to interact with OpenAI-compati
 - **`SlotsService` (`slots.ts`):** Monitors server slot usage/capacity (specific to `llama.cpp` server).
 
 ### State Management (`src/lib/stores/`)
-- **`ChatStore` (`chat.svelte.ts`):** The central store for UI state. Orchestrates message sending, agentic tool execution loop (send → model calls tool → execute → send results back → model may call more tools → loop up to `maxToolIterations`), regeneration, and manages the active conversation. Each agentic iteration renders as separate bubbles (reasoning, text, tool calls) for clear multi-step visibility.
+- **`ChatStore` (`chat.svelte.ts`):** The central store for UI state. Orchestrates message sending, agentic tool execution loop (send → model calls tool → execute → send results back → model may call more tools → loop up to `maxToolIterations`), regeneration, and manages the active conversation. `createConversation()` accepts an optional `navigateTo` parameter (string or callback `(convId) => string`) for custom post-creation navigation (used by search route).
 - **`ConversationsStore` (`conversations.svelte.ts`):** Manages conversation lifecycle — CRUD, title updates, branching, navigation, import/export. Extracted from ChatStore.
 - **`MCPStore` (`mcp.svelte.ts`):** MCP server state orchestration. Manages connections, health checks, tool definitions, and tool execution. Provides `getToolDefinitionsForLLM()` for injecting tools into API requests and `executeTool()` for running tools.
 - **`MCPResourcesStore` (`mcp-resources.svelte.ts`):** MCP resource caching.
@@ -67,6 +67,10 @@ This is a standalone, client-side WebUI designed to interact with OpenAI-compati
 - `src/lib/utils/`: Utility functions (MCP, agentic parsing, formatters, clipboard, etc.).
 - `src/lib/contexts/`: Svelte context providers for dependency injection.
 - `src/routes/`: SvelteKit routes (Main UI is in `+page.svelte`).
+  - `/` — Home page, empty chat screen. Supports `?q=` param to auto-send a message.
+  - `/chat/[id]` — Load existing conversation by UUID.
+  - `/search` — Entry point for `?q=` search queries, redirects to slug route.
+  - `/search/[slug]` — Perplexity-style search route. If slug matches an existing conversation (by short ID suffix), loads it. Otherwise treats the slug as a new query, creates a conversation, injects `SEARCH_SYSTEM_PROMPT`, and auto-sends.
 - `tests/`: Test files organized as `unit/`, `client/`, `e2e/`, `stories/`.
 
 ## Development Workflow
@@ -128,6 +132,30 @@ Browser-based MCP connections require CORS headers. For servers without CORS:
 - **Imports:** Use `$lib` alias for accessing `src/lib`.
 - **File naming:** `*.service.ts` for services, `*.svelte.ts` for stores.
 - **Formatting:** Prettier and ESLint are configured. Run `npm run format` and `npm run lint`.
+
+## Search Mode (`/search` route)
+
+Perplexity-style search feature that uses the app as a Firefox address bar search engine.
+
+- **Firefox search engine URL:** `https://aichat.duanleks.space/#/search/%s`
+- **Flow:** Firefox sends `/#/search/your-query` → `[slug]` route creates conversation → injects `SEARCH_SYSTEM_PROMPT` → auto-sends query → URL updates to `/#/search/your-query-<8char-shortid>`
+- **System prompt:** Defined in `src/lib/constants/search-system-prompt.ts`. Forces the model to always use web search tools, fetch full pages, and cite sources inline. Set via `chatService.systemPromptOverride` (active while on search routes, cleared on `onDestroy`).
+- **Slug utility:** `src/lib/utils/search-slug.ts` — `generateSearchSlug(query, convId)` creates slugs, `extractShortIdFromSlug(slug)` extracts the conversation short ID (first 8 chars of UUID).
+- **Existing conversations:** If the slug's short ID matches an existing conversation, it loads it instead of creating a new one.
+
+## Agentic Steps UI
+
+Agentic content (reasoning, tool calls) is rendered via `ChatMessageAgenticContent.svelte`:
+- **Collapsed view (default):** All steps grouped into a single "Completed N steps" dropdown with a vertical timeline inside
+- **While streaming:** Shows "Working... (N steps done)" with the current active step inline
+- **Expanded:** Each step is clickable to reveal details (tool args, results, reasoning content)
+- **Text content** from the model's final response is always shown below the steps summary
+
+## Deployment
+
+- **Live URL:** https://aichat.duanleks.space (deployed on Vercel)
+- **Firefox AI Sidebar:** Set `browser.ml.chat.provider` = `https://aichat.duanleks.space` in `about:config`
+- **Firefox Search Engine:** Add `https://aichat.duanleks.space/#/search/%s` as custom search engine with a keyword (e.g., `aisearch`)
 
 ## Version Compatibility Notes
 - **Svelte:** Pinned to 5.36.x (5.38+ has `blockers` API incompatibility with bits-ui)

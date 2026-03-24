@@ -105,22 +105,20 @@ npm run cap:run     # Build, sync, and run on device
 
 ## Firefox Integration
 
-### As a Search Engine (Perplexity-style)
+### As a Search Engine in Address Bar (Perplexity-style)
 
-You can use this app directly as a search engine in Firefox — queries go straight to the AI with an agentic web search system prompt. This works with the live demo at `aichat.duanleks.space` or any deployed instance.
+Add the app as a custom search engine in Firefox's address bar. Queries go straight to the AI with an agentic web search system prompt — like Perplexity.
 
-1. Go to `about:config` in Firefox
-2. Set:
-   - `browser.ml.chat.hideLocalhost` = `false`
-   - `browser.ml.chat.provider` = `https://aichat.duanleks.space`
-
-Now when you type a query using the AI chatbot feature, it opens the app with your query, creates a conversation, and the model automatically searches the web and provides cited answers — like Perplexity.
+1. Go to Firefox **Settings → Search**
+2. Add a new search engine with keyword (e.g., `aisearch`):
+   - **URL:** `https://aichat.duanleks.space/#/search/%s`
+3. Type `aisearch national holiday` in the address bar → the AI searches the web and gives cited answers
 
 The URL follows the pattern: `https://aichat.duanleks.space/#/search/your-query-here-a1b2c3d4`
 
-### As AI Chatbots Provider
+### As AI Chatbots Sidebar Provider
 
-For general chat (without the search system prompt), configure Firefox to use the app as an AI Chatbot provider:
+Configure Firefox's built-in AI sidebar to use this app for general chat and "Summarize page":
 
 1. Go to `about:config` in Firefox
 2. Set:
