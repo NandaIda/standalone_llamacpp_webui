@@ -138,7 +138,23 @@ Then set `browser.ml.chat.provider` = `http://localhost:8000`
 
 ## Configuration
 
-Configure your API endpoint in the app settings:
+**The live demo does not provide any LLM API or MCP servers — you bring your own.** Configure your API endpoint and MCP servers in the app settings.
+
+### LLM API Providers (any OpenAI-compatible endpoint)
+- [llama-server](https://github.com/ggerganov/llama.cpp) (local)
+- [DeepInfra](https://deepinfra.com/)
+- [OpenRouter](https://openrouter.ai/)
+- [Vultr](https://www.vultr.com/ai/)
+- Or any other OpenAI-compatible provider
+
+### MCP Servers for Web Search
+For search mode to work, connect an MCP server that provides web search tools:
+- [Brave Search MCP](https://github.com/nicholasgriffintn/brave-search-mcp)
+- [Tavily MCP](https://github.com/tavily-ai/tavily-mcp)
+- [SearXNG MCP](https://github.com/search-engine-mcp)
+- Or any MCP server that exposes `web_search` / `fetch_page` tools
+
+### App Settings
 - API Base URL: Your OpenAI-compatible endpoint
 - API Key: Your authentication key
 - Model: Your model identifier
