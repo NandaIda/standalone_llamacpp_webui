@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import '../app.css';
 	import { page } from '$app/state';
 	import { ChatSidebar, DialogConversationTitleUpdate } from '$lib/components/app';
@@ -11,7 +10,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import { serverStore } from '$lib/stores/server.svelte';
 	import { config, settingsStore } from '$lib/stores/settings.svelte';
-	import { setMode } from 'mode-watcher';
+	import { ModeWatcher } from 'mode-watcher';
 	import { Toaster } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { chatStore, isInitialized as chatIsInitialized } from '$lib/stores/chat.svelte';
@@ -160,10 +159,16 @@
 
 	// MCP store auto-initializes via reinitialize() when config changes
 
-	// Apply saved theme once on mount (replaces <ModeWatcher /> component)
+	// Theme: ModeWatcher handles light/dark/system, Claude theme needs manual class
 	$effect(() => {
-		const theme = config().theme as 'light' | 'dark' | 'system' | undefined;
-		untrack(() => setMode(theme ?? 'system'));
+		const theme = config().theme;
+		if (theme === 'claude') {
+			document.documentElement.classList.remove('dark');
+			document.documentElement.classList.add('claude');
+			document.documentElement.style.colorScheme = 'light';
+		} else {
+			document.documentElement.classList.remove('claude');
+		}
 	});
 
 	// Monitor API key changes and redirect to error page if removed or changed when required
@@ -283,6 +288,8 @@
 	onCancel={handleTitleUpdateCancel}
 />
 
+<ModeWatcher />
+
 <Sidebar.Provider bind:open={sidebarOpen}>
 	<div class="flex h-screen w-full" style:height="{innerHeight}px">
 		<Sidebar.Root class="h-full">
@@ -290,7 +297,7 @@
 		</Sidebar.Root>
 
 		<Sidebar.Trigger
-			class="transition-left absolute left-0 z-[900] h-8 w-8 duration-200 ease-linear {sidebarOpen
+			class="transition-left absolute left-0 z-[900] h-8 w-8 rounded-lg bg-background/70 backdrop-blur-sm duration-200 ease-linear {sidebarOpen
 				? 'md:left-[var(--sidebar-width)]'
 				: ''}"
 			style="translate: 1rem 1rem;"

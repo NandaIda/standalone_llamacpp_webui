@@ -22,9 +22,9 @@
 </script>
 
 <header
-	class="md:background-transparent pointer-events-none fixed top-0 right-0 left-0 z-50 flex items-center justify-end bg-background/40 p-4 backdrop-blur-xl md:left-[var(--sidebar-width)]"
+	class="pointer-events-none fixed top-0 right-0 z-50 flex items-center justify-end p-2 md:right-0"
 >
-	<div class="pointer-events-auto flex items-center space-x-2">
+	<div class="pointer-events-auto flex items-center space-x-1 rounded-lg bg-background/70 px-2 py-1 backdrop-blur-sm">
 		<ChatScreenHeaderNewChat />
 		<Button variant="ghost" size="sm" onclick={toggleSettings}>
 			<Settings class="h-4 w-4" />

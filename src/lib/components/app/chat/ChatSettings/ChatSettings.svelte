@@ -7,6 +7,7 @@
 		Monitor,
 		Sun,
 		Moon,
+		Palette,
 		ChevronLeft,
 		ChevronRight,
 		Database,
@@ -57,7 +58,8 @@
 					options: [
 						{ value: 'system', label: 'System', icon: Monitor },
 						{ value: 'light', label: 'Light', icon: Sun },
-						{ value: 'dark', label: 'Dark', icon: Moon }
+						{ value: 'dark', label: 'Dark', icon: Moon },
+						{ value: 'claude', label: 'Claude', icon: Palette }
 					]
 				},
 				{
@@ -246,7 +248,14 @@
 	function handleThemeChange(newTheme: string) {
 		localConfig.theme = newTheme;
 
-		setMode(newTheme as 'light' | 'dark' | 'system');
+		if (newTheme === 'claude') {
+			document.documentElement.classList.remove('dark');
+			document.documentElement.classList.add('claude');
+			document.documentElement.style.colorScheme = 'light';
+		} else {
+			document.documentElement.classList.remove('claude');
+			setMode(newTheme as 'light' | 'dark' | 'system');
+		}
 	}
 
 	function handleConfigChange(key: string, value: string | boolean) {
@@ -256,7 +265,7 @@
 	function handleReset() {
 		localConfig = { ...config() };
 
-		setMode(localConfig.theme as 'light' | 'dark' | 'system');
+		handleThemeChange(localConfig.theme as string || 'system');
 	}
 
 	function handleSave() {

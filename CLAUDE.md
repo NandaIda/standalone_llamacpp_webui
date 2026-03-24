@@ -132,7 +132,7 @@ Browser-based MCP connections require CORS headers. For servers without CORS:
 ## Version Compatibility Notes
 - **Svelte:** Pinned to 5.36.x (5.38+ has `blockers` API incompatibility with bits-ui)
 - **bits-ui:** Pinned to 2.14.4
-- **mode-watcher:** 1.1.0 — `<ModeWatcher />` component replaced with `setMode()` call due to Svelte 5 incompatibility
+- **mode-watcher:** 1.1.0 — Uses `<ModeWatcher />` component for light/dark/system themes. Custom themes (e.g. "claude") are handled via manual CSS class toggling since mode-watcher only supports light/dark/system.
 
 ## Android Signing
 
