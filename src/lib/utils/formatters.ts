@@ -67,6 +67,76 @@ export function formatNumber(num: number | unknown): string {
  * @param jsonString - JSON string to format
  * @returns Pretty-printed JSON string or original if invalid
  */
+/**
+ * Escapes HTML special characters and converts URLs in text to clickable links.
+ * Handles URLs with parentheses (markdown-style links), query strings, and fragments.
+ */
+export function linkifyUrls(text: string): string {
+	// Match URLs allowing parentheses, brackets, &, =, %, etc.
+	const urlRegex = /https?:\/\/[^\s"'<>]+/g;
+
+	const parts: string[] = [];
+	let lastIndex = 0;
+	let match: RegExpExecArray | null;
+
+	while ((match = urlRegex.exec(text)) !== null) {
+		if (match.index > lastIndex) {
+			parts.push(escapeHtml(text.slice(lastIndex, match.index)));
+		}
+		// Trim trailing punctuation that's likely not part of the URL
+		let url = match[0];
+		url = trimTrailingUrlPunctuation(url);
+		// Adjust regex lastIndex since we may have trimmed
+		urlRegex.lastIndex = match.index + url.length;
+
+		parts.push(
+			`<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary/80">${escapeHtml(url)}</a>`
+		);
+		lastIndex = urlRegex.lastIndex;
+	}
+
+	if (lastIndex < text.length) {
+		parts.push(escapeHtml(text.slice(lastIndex)));
+	}
+
+	return parts.join('');
+}
+
+/**
+ * Trim trailing characters that are unlikely to be part of the URL.
+ * Handles balanced parentheses for markdown-style [text](url) links.
+ */
+function trimTrailingUrlPunctuation(url: string): string {
+	// Balance parentheses — if there are more closing than opening, trim from the end
+	let openParens = 0;
+	let cutIndex = url.length;
+	for (let i = 0; i < url.length; i++) {
+		if (url[i] === '(') openParens++;
+		else if (url[i] === ')') {
+			if (openParens > 0) {
+				openParens--;
+			} else {
+				cutIndex = i;
+				break;
+			}
+		}
+	}
+	url = url.slice(0, cutIndex);
+
+	// Trim common trailing punctuation that's rarely part of URLs
+	url = url.replace(/[.,;:!?]+$/, '');
+
+	return url;
+}
+
+function escapeHtml(text: string): string {
+	return text
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
 export function formatJsonPretty(jsonString: string): string {
 	try {
 		const parsed = JSON.parse(jsonString);

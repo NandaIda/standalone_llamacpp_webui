@@ -7,7 +7,7 @@
 	import { config } from '$lib/stores/settings.svelte';
 	import { Wrench, Loader2, AlertTriangle, Brain, ListChecks } from '@lucide/svelte';
 	import { AgenticSectionType, AttachmentType, FileTypeText } from '$lib/enums';
-	import { formatJsonPretty } from '$lib/utils';
+	import { formatJsonPretty, linkifyUrls } from '$lib/utils';
 	import { ATTACHMENT_SAVED_REGEX, NEWLINE_SEPARATOR } from '$lib/constants';
 	import { parseAgenticContent, type AgenticSection } from '$lib/utils';
 	import type { DatabaseMessage, DatabaseMessageExtraImageFile } from '$lib/types/database';
@@ -308,7 +308,7 @@
 				{#if section.toolResult}
 					<div class="overflow-auto rounded-lg border border-border bg-muted p-4">
 						{#each section.parsedLines as line, i (i)}
-							<div class="font-mono text-xs leading-relaxed whitespace-pre-wrap">{line.text}</div>
+							<div class="font-mono text-xs leading-relaxed whitespace-pre-wrap">{@html linkifyUrls(line.text)}</div>
 							{#if line.image}
 								<img
 									src={line.image.base64Url}
@@ -443,7 +443,7 @@
 										<div class="mb-1 text-xs text-muted-foreground">Result:</div>
 										<div class="overflow-auto rounded-lg border border-border bg-muted p-3 max-h-60">
 											{#each section.parsedLines as line, i (i)}
-												<div class="font-mono text-xs leading-relaxed whitespace-pre-wrap">{line.text}</div>
+												<div class="font-mono text-xs leading-relaxed whitespace-pre-wrap">{@html linkifyUrls(line.text)}</div>
 												{#if line.image}
 													<img
 														src={line.image.base64Url}

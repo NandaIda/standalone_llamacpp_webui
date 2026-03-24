@@ -45,6 +45,7 @@ export {
 	formatParameters,
 	formatNumber,
 	formatJsonPretty,
+	linkifyUrls,
 	formatTime,
 	formatPerformanceTime,
 	formatAttachmentText

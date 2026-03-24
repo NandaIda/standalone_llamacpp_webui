@@ -7,6 +7,35 @@
 	import githubLightCss from 'highlight.js/styles/github.css?inline';
 	import { ColorMode } from '$lib/enums';
 
+	/**
+	 * Post-process highlighted HTML to wrap URLs in clickable links.
+	 * Operates on hljs output where & is &amp; — matches URLs in text nodes.
+	 */
+	function linkifyHighlightedHtml(html: string): string {
+		// Match URLs in HTML text nodes. Allow &amp; for query params.
+		// Stop at quotes, < (html tags), whitespace.
+		return html.replace(
+			/https?:\/\/(?:[^\s"'<>]|&amp;)+/g,
+			(match) => {
+				// Trim trailing punctuation (.,;:!?) and unbalanced )
+				let url = match.replace(/[.,;:!?]+$/, '');
+				// Balance parens (accounting for no actual parens in JSON URLs usually)
+				let open = 0;
+				let cut = url.length;
+				for (let i = 0; i < url.length; i++) {
+					if (url[i] === '(') open++;
+					else if (url[i] === ')') {
+						if (open > 0) open--;
+						else { cut = i; break; }
+					}
+				}
+				url = url.slice(0, cut);
+				const rawUrl = url.replace(/&amp;/g, '&');
+				return `<a href="${rawUrl}" target="_blank" rel="noopener noreferrer" class="underline hover:opacity-80" style="color: inherit; text-decoration: underline;">${url}</a>`;
+			}
+		);
+	}
+
 	interface Props {
 		code: string;
 		language?: string;
@@ -58,15 +87,17 @@
 
 			if (isSupported) {
 				const result = hljs.highlight(code, { language: lang });
-				highlightedHtml = result.value;
+				highlightedHtml = linkifyHighlightedHtml(result.value);
 			} else {
 				// Try auto-detection or fallback to plain text
 				const result = hljs.highlightAuto(code);
-				highlightedHtml = result.value;
+				highlightedHtml = linkifyHighlightedHtml(result.value);
 			}
 		} catch {
 			// Fallback to escaped plain text
-			highlightedHtml = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+			highlightedHtml = linkifyHighlightedHtml(
+				code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+			);
 		}
 	});
 </script>
