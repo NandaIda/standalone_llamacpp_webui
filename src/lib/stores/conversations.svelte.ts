@@ -159,7 +159,10 @@ class ConversationsStore {
 	 * @param name - Optional name for the conversation
 	 * @returns The ID of the created conversation
 	 */
-	async createConversation(name?: string): Promise<string> {
+	async createConversation(
+		name?: string,
+		navigateTo?: string | ((convId: string) => string)
+	): Promise<string> {
 		const conversationName = name || `Chat ${new Date().toLocaleString()}`;
 		const conversation = await DatabaseService.createConversation(conversationName);
 
@@ -167,7 +170,11 @@ class ConversationsStore {
 		this.activeConversation = conversation;
 		this.activeMessages = [];
 
-		await goto(`#/chat/${conversation.id}`);
+		const target =
+			typeof navigateTo === 'function'
+				? navigateTo(conversation.id)
+				: (navigateTo ?? `#/chat/${conversation.id}`);
+		await goto(target);
 
 		return conversation.id;
 	}

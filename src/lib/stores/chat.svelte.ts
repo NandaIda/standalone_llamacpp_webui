@@ -116,11 +116,14 @@ class ChatStore {
 	 * @param name - Optional name for the conversation, defaults to timestamped name
 	 * @returns The ID of the created conversation
 	 */
-	async createConversation(name?: string): Promise<string> {
+	async createConversation(
+		name?: string,
+		navigateTo?: string | ((convId: string) => string)
+	): Promise<string> {
 		const conversationName = name || `Chat ${new Date().toLocaleString()}`;
 
 		// Create conversation through conversationsStore
-		const convId = await conversationsStore.createConversation(conversationName);
+		const convId = await conversationsStore.createConversation(conversationName, navigateTo);
 
 		// Store the currently selected model in the conversation
 		const { modelsStore } = await import('$lib/stores/models.svelte');

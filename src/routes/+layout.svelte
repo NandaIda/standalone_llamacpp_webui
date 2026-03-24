@@ -17,8 +17,10 @@
 
 	let { children } = $props();
 
-	let isChatRoute = $derived(page.route.id === '/chat/[id]');
-	let isHomeRoute = $derived(page.route.id === '/');
+	let isChatRoute = $derived(
+		page.route.id === '/chat/[id]' || page.route.id === '/search/[slug]'
+	);
+	let isHomeRoute = $derived(page.route.id === '/' || page.route.id === '/search');
 	let isNewChatMode = $derived(page.url.searchParams.get('new_chat') === 'true');
 	let showSidebarByDefault = $derived(activeMessages().length > 0 || isLoading());
 
@@ -187,7 +189,10 @@
 		}
 
 		if (
-			(page.route.id === '/' || page.route.id === '/chat/[id]') &&
+			(page.route.id === '/' ||
+				page.route.id === '/chat/[id]' ||
+				page.route.id === '/search' ||
+				page.route.id === '/search/[slug]') &&
 			page.status !== 401 &&
 			page.status !== 403
 		) {

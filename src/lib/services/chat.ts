@@ -52,6 +52,13 @@ export class ChatService {
 	private abortControllers: Map<string, AbortController> = new Map();
 
 	/**
+	 * Optional per-conversation system prompt override. When set, replaces the global
+	 * system message for all subsequent requests until cleared.
+	 * Used by search mode to inject a search-specific system prompt.
+	 */
+	systemPromptOverride: string | null = null;
+
+	/**
 	 * Extracts reasoning content from <think> tags in the message content
 	 * @param content - The message content that may contain <think> tags
 	 * @returns Object with separated content and reasoning
@@ -1075,7 +1082,8 @@ export class ChatService {
 
 	private injectSystemMessage(messages: ApiChatMessageData[]): ApiChatMessageData[] {
 		const currentConfig = config();
-		const systemMessage = currentConfig.systemMessage?.toString().trim() || '';
+		const systemMessage =
+			this.systemPromptOverride ?? (currentConfig.systemMessage?.toString().trim() || '');
 
 		if (!this.cachedDateTimeInfo) {
 			const now = new Date();
