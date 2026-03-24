@@ -278,7 +278,11 @@
 	});
 </script>
 
-<Toaster richColors />
+<Toaster
+	toastOptions={{
+		class: '!bg-card !text-card-foreground !border-border'
+	}}
+/>
 
 <DialogConversationTitleUpdate
 	bind:open={titleUpdateDialogOpen}

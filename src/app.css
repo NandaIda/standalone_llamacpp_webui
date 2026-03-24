@@ -148,9 +148,20 @@
 	--sidebar-accent-foreground: oklch(0.25 0.02 50);
 	--sidebar-border: oklch(0.87 0.02 75);
 	--sidebar-ring: oklch(0.55 0.15 35);
-	--code-background: oklch(0.94 0.01 78);
-	--code-foreground: oklch(0.25 0.02 50);
+	--code-background: oklch(0.90 0.015 78);
+	--code-foreground: oklch(0.20 0.02 50);
 }
+
+.claude pre code,
+.claude .hljs {
+	color: oklch(0.20 0.02 50) !important;
+}
+
+.claude .hljs-string { color: oklch(0.45 0.15 150) !important; }
+.claude .hljs-keyword { color: oklch(0.45 0.18 280) !important; }
+.claude .hljs-number { color: oklch(0.50 0.15 35) !important; }
+.claude .hljs-attr { color: oklch(0.40 0.12 250) !important; }
+.claude .hljs-literal { color: oklch(0.50 0.15 35) !important; }
 
 @layer base {
 	* {

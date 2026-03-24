@@ -6,7 +6,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { SETTING_CONFIG_DEFAULT, SETTING_CONFIG_INFO } from '$lib/constants/settings-config';
-	import { supportsVision } from '$lib/stores/server.svelte';
+	import { supportsVision, serverDefaultParams } from '$lib/stores/server.svelte';
 	import { getParameterInfo, resetParameterToServerDefault, config } from '$lib/stores/settings.svelte';
 	import { ParameterSyncService } from '$lib/services/parameter-sync';
 	import { ChatSettingsParameterSourceIndicator } from '$lib/components/app';
@@ -20,6 +20,9 @@
 	}
 
 	let { fields, localConfig, onConfigChange, onThemeChange }: Props = $props();
+
+	// Server sampling defaults for placeholders
+	let sp = $derived((serverDefaultParams() ?? {}) as Record<string, unknown>);
 
 	const isExternalApi = $derived.by(() => {
 		const apiBaseUrl = config().apiBaseUrl?.toString().trim() || '.';
@@ -81,7 +84,11 @@
 						// Update local config immediately for real-time badge feedback
 						onConfigChange(field.key, e.currentTarget.value);
 					}}
-					placeholder={`Default: ${SETTING_CONFIG_DEFAULT[field.key] ?? 'none'}`}
+					placeholder={sp[field.key] != null
+						? `Default: ${sp[field.key]}`
+						: SETTING_CONFIG_DEFAULT[field.key] != null
+							? `Default: ${SETTING_CONFIG_DEFAULT[field.key]}`
+							: ''}
 					class="w-full {isCustomRealTime ? 'pr-8' : ''}"
 				/>
 				{#if isCustomRealTime}
@@ -119,7 +126,11 @@
 				id={field.key}
 				value={String(localConfig[field.key] ?? '')}
 				onchange={(e) => onConfigChange(field.key, e.currentTarget.value)}
-				placeholder={`Default: ${SETTING_CONFIG_DEFAULT[field.key] ?? 'none'}`}
+				placeholder={sp[field.key] != null
+						? `Default: ${sp[field.key]}`
+						: SETTING_CONFIG_DEFAULT[field.key] != null
+							? `Default: ${SETTING_CONFIG_DEFAULT[field.key]}`
+							: ''}
 				class="min-h-[100px] w-full md:max-w-2xl"
 			/>
 			{#if field.help || SETTING_CONFIG_INFO[field.key]}

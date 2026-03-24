@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getDeletionInfo } from '$lib/stores/chat.svelte';
 	import { copyToClipboard } from '$lib/utils/copy';
+	import { AGENTIC_REGEX } from '$lib/constants/agentic';
 	import { isIMEComposing } from '$lib/utils/is-ime-composing';
 	import type { ApiChatCompletionToolCall } from '$lib/types/api';
 	import ChatMessageAssistant from './ChatMessageAssistant.svelte';
@@ -160,8 +161,14 @@
 				}
 			}
 		} else {
-			// Regular text copy
-			await copyToClipboard(message.content, 'Message copied to clipboard');
+			// Copy content only — strip reasoning and tool call blocks
+			const cleanContent = message.content
+				.replace(AGENTIC_REGEX.REASONING_BLOCK, '')
+				.replace(AGENTIC_REGEX.REASONING_OPEN, '')
+				.replace(AGENTIC_REGEX.AGENTIC_TOOL_CALL_BLOCK, '')
+				.replace(AGENTIC_REGEX.AGENTIC_TOOL_CALL_OPEN, '')
+				.trim();
+			await copyToClipboard(cleanContent, 'Message copied to clipboard');
 		}
 		onCopy?.(message);
 	}
