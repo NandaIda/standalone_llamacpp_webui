@@ -152,6 +152,10 @@
 	--code-foreground: oklch(0.20 0.02 50);
 }
 
+.claude a {
+	color: oklch(0.45 0.15 35) !important;
+}
+
 .claude pre code,
 .claude .hljs {
 	color: oklch(0.20 0.02 50) !important;

@@ -90,7 +90,7 @@ export function linkifyUrls(text: string): string {
 		urlRegex.lastIndex = match.index + url.length;
 
 		parts.push(
-			`<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary/80">${escapeHtml(url)}</a>`
+			`<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="underline">${escapeHtml(url)}</a>`
 		);
 		lastIndex = urlRegex.lastIndex;
 	}

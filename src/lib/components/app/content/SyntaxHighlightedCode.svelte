@@ -6,6 +6,7 @@
 	import githubDarkCss from 'highlight.js/styles/github-dark.css?inline';
 	import githubLightCss from 'highlight.js/styles/github.css?inline';
 	import { ColorMode } from '$lib/enums';
+	import { theme } from '$lib/stores/settings.svelte';
 
 	/**
 	 * Post-process highlighted HTML to wrap URLs in clickable links.
@@ -69,7 +70,8 @@
 
 	$effect(() => {
 		const currentMode = mode.current;
-		const isDark = currentMode === ColorMode.DARK;
+		const isClaude = theme() === 'claude';
+		const isDark = !isClaude && currentMode === ColorMode.DARK;
 
 		loadHighlightTheme(isDark);
 	});
