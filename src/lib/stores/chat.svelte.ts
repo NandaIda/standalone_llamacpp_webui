@@ -7,6 +7,7 @@ import { mcpStore } from '$lib/stores/mcp.svelte';
 import { getBuiltinToolDefinitions, isBuiltinTool, executeBuiltinTool } from '$lib/services/builtin-tools.service';
 import { normalizeModelName } from '$lib/utils/model-names';
 import { filterByLeafNodeId, findLeafNode, findDescendantMessages } from '$lib/utils/branching';
+import { extractHallucinatedToolCalls } from '$lib/utils/agentic';
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 import { toast } from 'svelte-sonner';
@@ -638,6 +639,23 @@ class ChatStore {
 					const currentSettings = config();
 					const MAX_TOOL_ITERATIONS = Number(currentSettings.maxToolIterations) || 10;
 					let currentToolCalls = toolCallContent || streamedToolCallContent;
+
+					// Intercept hallucinated tool calls in reasoning content
+					// Some models output tool calls as text (e.g., <tool_call><function=...>)
+					// in reasoning instead of using structured tool calling. Detect and convert them.
+					const availableToolNames = new Set(allTools.map(t => t.function.name));
+					if (!currentToolCalls && allTools.length > 0) {
+						const reasoning = updateData.thinking || '';
+						const content = updateData.content || '';
+						const hallucinatedCalls = extractHallucinatedToolCalls(
+							reasoning + '\n' + content,
+							availableToolNames
+						);
+						if (hallucinatedCalls.length > 0) {
+							console.log('[Tools] Intercepted hallucinated tool calls from reasoning:', hallucinatedCalls.map(tc => tc.function.name));
+							currentToolCalls = JSON.stringify(hallucinatedCalls);
+						}
+					}
 					let currentContent = updateData.content;
 					let accumulatedThinking = updateData.thinking || '';
 					let allToolCallsJson = currentToolCalls || '';
@@ -823,6 +841,20 @@ class ChatStore {
 									onComplete: async (fc?: string, rc?: string, _timings?: ChatMessageTimings, tc?: string) => {
 										slotsService.stopStreaming();
 										followUpToolCalls = tc || streamedToolCallContent;
+
+										// Intercept hallucinated tool calls in follow-up reasoning
+										if (!followUpToolCalls && availableToolNames.size > 0) {
+											const followUpReasoning = rc || streamedReasoningContent || '';
+											const followUpContent = fc || streamedContent || '';
+											const hallucinatedCalls = extractHallucinatedToolCalls(
+												followUpReasoning + '\n' + followUpContent,
+												availableToolNames
+											);
+											if (hallucinatedCalls.length > 0) {
+												console.log('[Tools] Intercepted hallucinated tool calls from follow-up reasoning:', hallucinatedCalls.map(tc => tc.function.name));
+												followUpToolCalls = JSON.stringify(hallucinatedCalls);
+											}
+										}
 
 										// Add completed reasoning to agentic content
 										const iterationThinking = rc || streamedReasoningContent;

@@ -282,3 +282,85 @@ function splitReasoningSegments(rawContent: string): ReasoningSegment[] {
 
 	return segments;
 }
+
+/**
+ * Common patterns for hallucinated tool calls in reasoning content.
+ * Models sometimes output tool calls as text instead of using structured tool calling.
+ */
+const HALLUCINATED_TOOL_CALL_PATTERNS = [
+	// XML-style: <tool_call>\n<function=fetch_page>\n<parameter=url>...</parameter>\n</function>\n</tool_call>
+	/<tool_call>\s*<function=(\w+)>([\s\S]*?)<\/function>\s*<\/tool_call>/g,
+	// Simpler XML: <function=fetch_page>\n<parameter=url>...</parameter>\n</function>
+	/<function=(\w+)>([\s\S]*?)<\/function>/g
+];
+
+const PARAMETER_PATTERN = /<parameter=(\w+)>\s*([\s\S]*?)\s*<\/parameter>/g;
+
+interface ExtractedToolCall {
+	id: string;
+	type: 'function';
+	function: {
+		name: string;
+		arguments: string;
+	};
+}
+
+/**
+ * Extracts hallucinated tool calls from reasoning/content text.
+ * When a model outputs tool calls as text (e.g., XML-style <tool_call> blocks)
+ * instead of using the structured API, this function parses them out so they
+ * can be executed.
+ *
+ * @param text - Reasoning or content text that may contain hallucinated tool calls
+ * @param availableToolNames - Set of tool names that are actually available (to avoid false positives)
+ * @returns Array of extracted tool calls in OpenAI format, or empty array if none found
+ */
+export function extractHallucinatedToolCalls(
+	text: string,
+	availableToolNames: Set<string>
+): ExtractedToolCall[] {
+	if (!text) return [];
+
+	const extracted: ExtractedToolCall[] = [];
+	const seen = new Set<string>();
+
+	for (const pattern of HALLUCINATED_TOOL_CALL_PATTERNS) {
+		const regex = new RegExp(pattern.source, pattern.flags);
+		let match;
+
+		while ((match = regex.exec(text)) !== null) {
+			const toolName = match[1];
+
+			// Only extract if this is a real tool we have available
+			if (!availableToolNames.has(toolName)) continue;
+
+			const paramContent = match[2];
+			const args: Record<string, string> = {};
+
+			// Parse parameters
+			const paramRegex = new RegExp(PARAMETER_PATTERN.source, PARAMETER_PATTERN.flags);
+			let paramMatch;
+			while ((paramMatch = paramRegex.exec(paramContent)) !== null) {
+				args[paramMatch[1]] = paramMatch[2];
+			}
+
+			const argsJson = JSON.stringify(args);
+			const key = `${toolName}:${argsJson}`;
+
+			// Deduplicate (the two patterns may match the same call)
+			if (seen.has(key)) continue;
+			seen.add(key);
+
+			extracted.push({
+				id: `hallucinated_${toolName}_${Date.now()}_${extracted.length}`,
+				type: 'function',
+				function: {
+					name: toolName,
+					arguments: argsJson
+				}
+			});
+		}
+	}
+
+	return extracted;
+}
